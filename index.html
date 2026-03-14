@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🏃 Speedrun Map Generator — Platformer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-logo">
+      <span class="logo-icon">⚡</span>
+      <div>
+        <h1>Speedrun Map Generator</h1>
+        <p>Génère des maps optimisées pour le speedrun</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="btn-generate" class="btn btn-primary">
+        <span>⚡</span> Générer une map
+      </button>
+      <button id="btn-export" class="btn btn-secondary">
+        <span>📋</span> Exporter guide Godot
+      </button>
+      <button id="btn-clear" class="btn btn-ghost">
+        <span>🗑</span> Effacer
+      </button>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- Panneau de configuration -->
+    <aside class="sidebar">
+      <section class="panel">
+        <h2 class="panel-title">⚙️ Configuration</h2>
+
+        <div class="field">
+          <label>Difficulté</label>
+          <div class="segmented" id="difficulty">
+            <button class="seg-btn active" data-val="easy">Facile</button>
+            <button class="seg-btn" data-val="medium">Moyen</button>
+            <button class="seg-btn" data-val="hard">Difficile</button>
+            <button class="seg-btn" data-val="extreme">Extrême</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Style de parcours</label>
+          <div class="segmented" id="style">
+            <button class="seg-btn active" data-val="vertical">Vertical</button>
+            <button class="seg-btn" data-val="horizontal">Horizontal</button>
+            <button class="seg-btn" data-val="mixed">Mixte</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Taille de la grille</label>
+          <div class="grid-2">
+            <div>
+              <label class="sublabel">Largeur (cases)</label>
+              <input type="number" id="grid-w" class="input" value="25" min="15" max="60" />
+            </div>
+            <div>
+              <label class="sublabel">Hauteur (cases)</label>
+              <input type="number" id="grid-h" class="input" value="40" min="20" max="100" />
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <h3 class="sub-title">🎮 Mécaniques activées</h3>
+
+        <div class="toggles">
+          <label class="toggle-item">
+            <input type="checkbox" id="mec-dash" checked />
+            <span class="toggle-track"></span>
+            <span class="toggle-label">💛 Dash (potion jaune)</span>
+          </label>
+          <label class="toggle-item">
+            <input type="checkbox" id="mec-slide" checked />
+            <span class="toggle-track"></span>
+            <span class="toggle-label">💜 Slide (potion violette)</span>
+          </label>
+          <label class="toggle-item">
+            <input type="checkbox" id="mec-walljump" checked />
+            <span class="toggle-track"></span>
+            <span class="toggle-label">🧱 Wall Jump</span>
+          </label>
+          <label class="toggle-item">
+            <input type="checkbox" id="mec-trampoline" />
+            <span class="toggle-track"></span>
+            <span class="toggle-label">🟢 Trampoline</span>
+          </label>
+        </div>
+
+        <div class="divider"></div>
+        <h3 class="sub-title">☠️ Obstacles</h3>
+
+        <div class="field">
+          <label>Densité des spikes</label>
+          <input type="range" id="spike-density" min="0" max="10" value="4" class="slider" />
+          <span class="slider-val" id="spike-val">4</span>
+        </div>
+        <div class="field">
+          <label>Densité des death zones</label>
+          <input type="range" id="dz-density" min="0" max="5" value="2" class="slider" />
+          <span class="slider-val" id="dz-val">2</span>
+        </div>
+
+        <div class="divider"></div>
+        <h3 class="sub-title">🌱 Seed aléatoire</h3>
+        <div class="seed-row">
+          <input type="text" id="seed-input" class="input" placeholder="ex: speedrun42" />
+          <button id="btn-rand-seed" class="btn btn-sm btn-ghost">🎲</button>
+        </div>
+      </section>
+
+      <!-- Légende -->
+      <section class="panel">
+        <h2 class="panel-title">🗺 Légende</h2>
+        <div class="legend">
+          <div class="legend-item"><span class="leg-tile tile-solid"></span> Sol / Mur</div>
+          <div class="legend-item"><span class="leg-tile tile-player"></span> Spawn joueur</div>
+          <div class="legend-item"><span class="leg-tile tile-finish"></span> Ligne d'arrivée</div>
+          <div class="legend-item"><span class="leg-tile tile-dash"></span> Potion Dash 💛</div>
+          <div class="legend-item"><span class="leg-tile tile-slide"></span> Potion Slide 💜</div>
+          <div class="legend-item"><span class="leg-tile tile-spike"></span> Spike ☠️</div>
+          <div class="legend-item"><span class="leg-tile tile-dz"></span> Zone de mort</div>
+          <div class="legend-item"><span class="leg-tile tile-trampoline"></span> Trampoline 🟢</div>
+          <div class="legend-item"><span class="leg-tile tile-wall"></span> Mur (wall jump)</div>
+          <div class="legend-item"><span class="leg-tile tile-gap"></span> Vide / saut requis</div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Zone centrale : canvas + info -->
+    <div class="center">
+      <div class="canvas-toolbar">
+        <div class="toolbar-left">
+          <span id="map-name" class="map-name">—</span>
+        </div>
+        <div class="toolbar-right">
+          <button class="icon-btn" id="btn-zoom-out" title="Zoom -">−</button>
+          <span id="zoom-display" class="zoom-label">100%</span>
+          <button class="icon-btn" id="btn-zoom-in" title="Zoom +">+</button>
+        </div>
+      </div>
+      <div class="canvas-container" id="canvas-container">
+        <canvas id="map-canvas"></canvas>
+        <div class="canvas-placeholder" id="canvas-placeholder">
+          <div class="placeholder-inner">
+            <span class="placeholder-icon">⚡</span>
+            <p>Clique sur <strong>"Générer une map"</strong><br />pour créer ton niveau de speedrun</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats de la map -->
+      <div class="stats-row" id="stats-row" style="display:none">
+        <div class="stat-card">
+          <span class="stat-ico">📐</span>
+          <div>
+            <span class="stat-val" id="stat-size">—</span>
+            <span class="stat-lbl">Taille (cases)</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-ico">🚀</span>
+          <div>
+            <span class="stat-val" id="stat-route">—</span>
+            <span class="stat-lbl">Route principale</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-ico">💛</span>
+          <div>
+            <span class="stat-val" id="stat-dash">—</span>
+            <span class="stat-lbl">Potions Dash</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-ico">💜</span>
+          <div>
+            <span class="stat-val" id="stat-slide">—</span>
+            <span class="stat-lbl">Potions Slide</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-ico">☠️</span>
+          <div>
+            <span class="stat-val" id="stat-spikes">—</span>
+            <span class="stat-lbl">Spikes ☠️</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-ico">⚡</span>
+          <div>
+            <span class="stat-val" id="stat-shortcuts">—</span>
+            <span class="stat-lbl">Shortcuts</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-ico">⏱</span>
+          <div>
+            <span class="stat-val" id="stat-time">—</span>
+            <span class="stat-lbl">Temps estimé</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panneau guide Godot -->
+    <aside class="sidebar sidebar-right" id="godot-guide" style="display:none">
+      <section class="panel">
+        <h2 class="panel-title">📖 Guide Godot</h2>
+        <div id="guide-content" class="guide-content"></div>
+      </section>
+    </aside>
+  </main>
+
+  <!-- Modal Export -->
+  <div class="modal-overlay" id="modal-overlay" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>📋 Guide de Reconstruction Godot</h2>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="btn-copy-guide">📋 Copier le guide</button>
+        <button class="btn btn-ghost" id="btn-close-modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="generator.js"></script>
+</body>
+
+</html>
