@@ -64,10 +64,10 @@ class SpeedrunMapGenerator {
 
     // Difficulté → limites de saut
     this.D = {
-      easy: { jH: 4, jW: 4, pMin: 5, pMax: 9, vStep: [3, 4], wH: [4, 6], slideL: [5, 8] },
-      medium: { jH: 5, jW: 5, pMin: 4, pMax: 8, vStep: [4, 6], wH: [5, 8], slideL: [4, 7] },
-      hard: { jH: 6, jW: 6, pMin: 3, pMax: 6, vStep: [5, 7], wH: [6, 10], slideL: [4, 6] },
-      extreme: { jH: 7, jW: 7, pMin: 2, pMax: 5, vStep: [6, 8], wH: [7, 12], slideL: [3, 5] },
+      easy: { jH: 4, jW: 4, pMin: 3, pMax: 6, vStep: [3, 4], wH: [4, 6], slideL: [5, 8] },
+      medium: { jH: 5, jW: 5, pMin: 2, pMax: 5, vStep: [4, 6], wH: [5, 8], slideL: [4, 7] },
+      hard: { jH: 6, jW: 6, pMin: 2, pMax: 4, vStep: [5, 7], wH: [6, 10], slideL: [4, 6] },
+      extreme: { jH: 7, jW: 7, pMin: 1, pMax: 3, vStep: [6, 8], wH: [7, 12], slideL: [3, 5] },
     }[cfg.difficulty];
   }
 
@@ -133,11 +133,11 @@ class SpeedrunMapGenerator {
     // Apr\u00e8s un slide  : pause ou enchan\u00eene dash
     // Trois normaux minimum avant le premier challenge
     const TRANSITIONS = {
-      normal: ['normal', 'normal', 'dash', 'slide', 'walljump', 'trampoline'],
-      dash: ['normal', 'normal', 'slide'],   // souffler ou combo dash+slide
-      slide: ['normal', 'normal', 'dash'],    // souffler ou combo slide+dash
-      walljump: ['normal'],                      // TOUJOURS souffler apr\u00e8s WJ
-      trampoline: ['normal', 'dash'],
+      normal: ['normal', 'dash', 'slide', 'walljump', 'trampoline'],
+      dash: ['normal', 'dash', 'slide', 'walljump', 'trampoline'],
+      slide: ['normal', 'dash', 'slide', 'walljump', 'trampoline'],
+      walljump: ['dash', 'slide', 'walljump', 'trampoline'], // Speedrun: plus de pause
+      trampoline: ['dash', 'slide', 'walljump', 'trampoline'],
     };
 
     // \u2500\u2500 Introduction progressive des m\u00e9caniques (seuils de progression) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -178,7 +178,7 @@ class SpeedrunMapGenerator {
 
       if (ch === 'walljump') {
         cx = this._segWallJump(cx, cy, nextY, goRight);
-        wjCooldown = 2;
+        wjCooldown = 0;
       } else {
         if (ch === 'dash') cx = this._segDash(cx, cy, nextY, goRight);
         else if (ch === 'slide') cx = this._segSlide(cx, cy, nextY, goRight);
@@ -403,9 +403,10 @@ class SpeedrunMapGenerator {
     const D = this.D;
     const len = this.rng.int(...D.slideL);
 
+    // On colle un peu plus le slide pour l`'enchaîner sans ralentir
     let sx = goRight
-      ? Math.min(this.W - len - 1, cx + this.rng.int(1, D.jW - 2))
-      : Math.max(1, cx - len - this.rng.int(1, D.jW - 2));
+      ? Math.min(this.W - len - 1, cx + this.rng.int(1, Math.max(1, D.jW - 3)))
+      : Math.max(1, cx - len - this.rng.int(1, Math.max(1, D.jW - 3)));
     sx = Math.max(1, Math.min(this.W - len - 1, sx));
 
     // Sol du couloir
@@ -419,9 +420,9 @@ class SpeedrunMapGenerator {
 
   // ─── Trampoline : propulseur vertical ──────────────────────
   _segTrampoline(cx, cy, nextY, goRight) {
-    const D = this.D;
-    const len = this.rng.int(D.pMin, D.pMax - 1);
-    const gap = this.rng.int(1, Math.min(3, D.jW - 2));
+    // Plus petite plateforme pour le trampoline pour un saut plus précis
+    const len = Math.max(1, this.rng.int(D.pMin - 1, D.pMax - 2));
+    const gap = this.rng.int(1, Math.min(3, D.jW - 1));
 
     let px = goRight
       ? Math.min(this.W - len - 1, cx + gap)
@@ -448,8 +449,8 @@ class SpeedrunMapGenerator {
     let cx = 0, cy = midY;
     let segIndex = 0;
 
-    // Terrasse de départ large
-    const startLen = D.pMax + 3;
+    // Terrasse de départ (moins longue pour le speedrun)
+    const startLen = D.pMax;
     this._platform(cx, cy, startLen);
     this.segments.push({ type: 'start', x: cx, y: cy, len: startLen });
     cx = startLen;
@@ -459,10 +460,10 @@ class SpeedrunMapGenerator {
     const TRANSITIONS = {
       normal: ['normal', 'dash', 'slide', 'walljump', 'trampoline', 'normaljump'],
       normaljump: ['normal', 'dash', 'slide', 'walljump', 'trampoline'],
-      dash: ['normal', 'slide'],
-      slide: ['normal', 'dash'],
-      walljump: ['normal', 'dash'],
-      trampoline: ['normal', 'dash'],
+      dash: ['dash', 'slide', 'walljump', 'trampoline', 'normaljump'],
+      slide: ['dash', 'slide', 'walljump', 'trampoline', 'normaljump'],
+      walljump: ['dash', 'slide', 'walljump', 'trampoline', 'normaljump'],
+      trampoline: ['dash', 'slide', 'walljump', 'trampoline', 'normaljump'],
     };
 
     // Seuils d'intro très bas en horizontal car il y a peu de segments
@@ -521,7 +522,7 @@ class SpeedrunMapGenerator {
       let result;
       if (ch === 'walljump') {
         result = this._hSegWallJump(cx, cy, nextY, terLen);
-        wjCooldown = 2;
+        wjCooldown = 0;
       } else {
         if (ch === 'dash') result = this._hSegDash(cx, cy, nextY, terLen);
         else if (ch === 'slide') result = this._hSegSlide(cx, cy, nextY, terLen);
@@ -549,7 +550,7 @@ class SpeedrunMapGenerator {
       }
     }
 
-    const endLen = D.pMax + 2;
+    const endLen = D.pMin + 1;
     const endX = Math.min(cx, this.W - endLen - 1);
     this._platform(endX, cy, endLen);
     this.segments.push({ type: 'end', x: endX, y: cy, len: endLen });
@@ -605,10 +606,9 @@ class SpeedrunMapGenerator {
     const dashGap = D.jW + 3;
     const nx = cx + dashGap;
     if (nx + terLen >= this.W - 1) return null;
-
     const ny = Math.max(4, Math.min(this.H - 5, cy + this.rng.int(-1, 1))); // proche de cy
+    terLen = Math.max(2, terLen - 1);
     this._platform(nx, ny, terLen);
-
     // Death zone sous le gap (fond de la map)
     const pitBottom = this.H - 2;
     for (let gx = cx; gx < nx; gx++) {
@@ -723,19 +723,22 @@ class SpeedrunMapGenerator {
     const tx = cx + gap;
     if (tx + 1 >= this.W - 1) return null;
 
-    this._platform(tx, cy, 2);
+    // Mini îlot 1 case pour le trampoline
+    this._platform(tx, cy, 1);
     this._set(tx, cy - 1, TILE.TRAMPOLINE);
     this.items.push({ type: TILE.TRAMPOLINE, x: tx, y: cy - 1 });
-    this.segments.push({ type: 'trampoline', x: tx, y: cy, len: 2 });
+    this.segments.push({ type: "trampoline", x: tx, y: cy, len: 1 });
 
     // Le trampoline permet de sauter HAUT, on crée la suite en hauteur
     const jumpH = this.rng.int(5, 8);
     const targetY = Math.max(4, cy - jumpH);
-    const targetX = tx + 3;
-    if (targetX + terLen >= this.W - 1) return { nextX: tx + 2, nextY: cy };
+    const targetX = tx + this.rng.int(2, 4);
+    terLen = Math.max(2, terLen - 1);
+    if (targetX + terLen >= this.W - 1) return { nextX: tx + 1, nextY: cy };
 
     this._platform(targetX, targetY, terLen);
-    this.segments.push({ type: 'normal', x: targetX, y: targetY, len: terLen });
+    this.segments.push({ type: "normal", x: targetX, y: targetY, len: terLen });
+    return { nextX: targetX + terLen, nextY: targetY };
     return { nextX: targetX + terLen, nextY: targetY };
   }
 
