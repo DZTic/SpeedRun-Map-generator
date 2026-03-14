@@ -443,7 +443,7 @@ body {
   box-shadow: 0 0 6px #c084fc80;
 }
 
-.tile-spike {
+.tile-spike, .tile-spike-up, .tile-spike-down, .tile-spike-left, .tile-spike-right {
   background: #ef4444;
   border: 1px solid #dc2626;
   box-shadow: 0 0 6px #ef444480;
