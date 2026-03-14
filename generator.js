@@ -6,7 +6,7 @@
 
 const TILE = {
   EMPTY: 0, SOLID: 1, PLAYER: 2, FINISH: 3,
-  DASH: 4, SLIDE: 5, SPIKE: 6, DEATHZONE: 7,
+  DASH: 4, SLIDE: 5, SPIKE_UP: 6, SPIKE_DOWN: 11, SPIKE_LEFT: 12, SPIKE_RIGHT: 13, DEATHZONE: 7,
   TRAMPOLINE: 8, WALL: 9,
 };
 
@@ -17,7 +17,10 @@ const COLOR = {
   [TILE.FINISH]: { fill: '#fbbf24', stroke: '#f59e0b', glow: '#fbbf24' },
   [TILE.DASH]: { fill: '#fef08a', stroke: '#fde047', glow: '#fef08a' },
   [TILE.SLIDE]: { fill: '#c084fc', stroke: '#a855f7', glow: '#c084fc' },
-  [TILE.SPIKE]: { fill: '#ef4444', stroke: '#dc2626', glow: '#ef4444' },
+  [TILE.SPIKE_UP]: { fill: "#ef4444", stroke: "#dc2626", glow: "#ef4444" },
+  [TILE.SPIKE_DOWN]: { fill: "#ef4444", stroke: "#dc2626", glow: "#ef4444" },
+  [TILE.SPIKE_LEFT]: { fill: "#ef4444", stroke: "#dc2626", glow: "#ef4444" },
+  [TILE.SPIKE_RIGHT]: { fill: "#ef4444", stroke: "#dc2626", glow: "#ef4444" },
   [TILE.DEATHZONE]: { fill: '#7f1d1d', stroke: '#dc2626', pattern: true },
   [TILE.TRAMPOLINE]: { fill: '#34d399', stroke: '#10b981', glow: '#34d399' },
   [TILE.WALL]: { fill: '#1f2937', stroke: '#7c3aed' },
@@ -26,7 +29,7 @@ const COLOR = {
 const EMOJI = {
   [TILE.PLAYER]: '🏃', [TILE.FINISH]: '🏁',
   [TILE.DASH]: '💛', [TILE.SLIDE]: '💜',
-  [TILE.SPIKE]: '☠', [TILE.TRAMPOLINE]: '🟢',
+  [TILE.SPIKE_UP]: "☠", [TILE.SPIKE_DOWN]: "☠", [TILE.SPIKE_LEFT]: "☠", [TILE.SPIKE_RIGHT]: "☠", [TILE.TRAMPOLINE]: '🟢',
 };
 
 // ─── RNG seedable ────────────────────────────────────────────
@@ -146,7 +149,7 @@ class SpeedrunMapGenerator {
     // Phase 2 (35-55%) : dash puis slide = une m\u00e9canique \u00e0 la fois
     // Phase 3 (55-75%) : walljump + combinaisons
     // Phase 4 (75-100%): tout + difficult\u00e9 max
-    const INTRO = { dash: 0.35, slide: 0.45, trampoline: 0.35, walljump: 0.55 };
+    const INTRO = { dash: 0.35, slide: 0.45, trampoline: 0.35, walljump: 0.15 };
 
     let prevCh = 'normal';
 
@@ -174,7 +177,14 @@ class SpeedrunMapGenerator {
         if (ch === 'walljump') return this.cfg.walljump && progress >= INTRO.walljump && wjCooldown <= 0;
         return false;
       });
-      const ch = this.rng.pick(candidates.length ? candidates : ['normal']);
+
+      // Force walljump if it's activated and available to show it more often
+      let ch;
+      if (this.cfg.walljump && progress >= INTRO.walljump && wjCooldown <= 0 && this.rng.bool(0.3)) {
+        ch = 'walljump';
+      } else {
+        ch = this.rng.pick(candidates.length ? candidates : ['normal']);
+      }
       prevCh = ch;
 
       if (ch === 'walljump') {
@@ -206,10 +216,34 @@ class SpeedrunMapGenerator {
       !s.skip && !s.shortcut && s.len && s.len > 0 &&
       ['start', 'normal', 'dash', 'slide', 'trampoline'].includes(s.type)
     );
+
+    // Pour chaque groupe de plateformes, décider s'il s'agit d'une zone pleine ou "Celeste"
+    // 40% de chances d'avoir un grand espace vide "Celeste"
+    let isCelesteZone = this.rng.bool(0.4);
+
     for (let i = 0; i < path.length - 1; i++) {
+      // Changer de zone aléatoirement tous les 3-4 segments
+      if (i > 0 && i % this.rng.int(3, 5) === 0) {
+        isCelesteZone = this.rng.bool(0.4);
+      }
+
       const seg = path[i];
       const next = path[i + 1];
       if (!seg.len || !next.len) continue;
+
+      // Si on est dans une zone Celeste, on crée un pilier d'une épaisseur aléatoire (1 à len)
+      if (isCelesteZone) {
+        // Ajouter un peu d'épaisseur en dessous pour que ça ne soit pas qu'un fil
+        const depth = this.rng.int(1, 3);
+        for (let y = seg.y + 1; y <= seg.y + depth && y < this.H - 1; y++) {
+          for (let x = seg.x; x < seg.x + seg.len; x++) {
+            if (this._get(x, y) === TILE.EMPTY) this._set(x, y, TILE.SOLID);
+          }
+        }
+        continue;
+      }
+
+      // Zone pleine (caverne)
       const yStart = next.y + 1;
       const yEnd = seg.y - 1;
       if (yStart > yEnd) continue;
@@ -450,7 +484,7 @@ class SpeedrunMapGenerator {
     };
 
     // Seuils d'intro très bas en horizontal car il y a peu de segments
-    const INTRO = { dash: 0.15, slide: 0.20, trampoline: 0.15, walljump: 0.25 };
+    const INTRO = { dash: 0.10, slide: 0.15, trampoline: 0.15, walljump: 0.05 };
     let prevCh = 'normal';
     let normalCount = 0;
     let wjCooldown = 0;
@@ -492,7 +526,9 @@ class SpeedrunMapGenerator {
 
       // Forcer une mécanique si trop de segments normaux successifs
       let ch;
-      if (normalCount >= 2) {
+      if (this.cfg.walljump && progress >= INTRO.walljump && wjCooldown <= 0 && this.rng.bool(0.3)) {
+        ch = 'walljump';
+      } else if (normalCount >= 2) {
         const mechs = candidates.filter(c => c !== 'normal' && c !== 'normaljump');
         if (mechs.length > 0) ch = this.rng.pick(mechs);
         else ch = this.rng.pick(candidates);
@@ -766,7 +802,13 @@ class SpeedrunMapGenerator {
       if (this.cfg.dash) pool.push('dash');
       if (this.cfg.slide) pool.push('slide');
       if (this.cfg.trampoline) pool.push('trampoline');
-      const ch = this.rng.pick(pool);
+
+      let ch;
+      if (this.cfg.walljump && !lastWJ && this.rng.bool(0.4)) {
+        ch = 'walljump';
+      } else {
+        ch = this.rng.pick(pool);
+      }
       lastWJ = (ch === 'walljump');
 
       if (ch === 'walljump') cx = this._segWallJump(cx, cy, nextY, goRight);
@@ -894,56 +936,123 @@ class SpeedrunMapGenerator {
   _placeObstacles() {
     const spikeDensity = this.cfg.spikeDensity;
     if (spikeDensity === 0) return;
-    // Règle speedrun : obstacles uniquement dans la 2e moitié du parcours.
-    // Évite le "kaizo frustrant" dès le départ.
-    const total = this.segments.length;
 
-    // Pré-calcul des zones protégées : intérieur des puits de wall jump.
-    // Un spike DANS un puits = impossible à éviter → interdit.
+    // Le nombre de zones à spiker dépend de la densité
+    const total = this.segments.length;
+    const startIndex = Math.floor(total * 0.25); // On commence plus tôt que 45%
+
+    // Pré-calcul des zones protégées pour éviter de bloquer les sauts cruciaux
     const wjZones = this.segments
       .filter(s => s.type === 'walljump')
       .map(s => ({
-        x1: s.x - 1,                          // marge 1 case à gauche
-        x2: s.x + (s.innerGap || 4) + 5,      // marge 1 case à droite (2 murs + gap + 1)
-        y1: s.y - 1,                           // un cran au-dessus de la sortie
-        y2: s.y + (s.wallH || 6) + 1,          // fond du puits + 1
+        x1: s.x - 2,
+        x2: s.x + (s.innerGap || 4) + 6,
+        y1: s.y - 2,
+        y2: s.y + (s.wallH || 6) + 2,
       }));
+    const isInWJZone = (x, y) => wjZones.some(z => x >= z.x1 && x <= z.x2 && y >= z.y1 && y <= z.y2);
 
-    const isInWJZone = (x, y) =>
-      wjZones.some(z => x >= z.x1 && x <= z.x2 && y >= z.y1 && y <= z.y2);
+    // Fonction d'aide pour placer un pic si la case est vide
+    const tryPlaceSpike = (x, y, tileType) => {
+      if (this._get(x, y) === TILE.EMPTY && !isInWJZone(x, y)) {
+        // Éviter les items
+        if (this.items.some(i => i.y === y && Math.abs(i.x - x) <= 1)) return false;
+        this._set(x, y, tileType);
+        return true;
+      }
+      return false;
+    };
 
-    let placed = 0;
-    this.segments.forEach((seg, idx) => {
-      if (placed >= spikeDensity * 2) return;
-      // Demande au moins 4 cases de long pour pouvoir poser un pic sans bloquer
-      if (!seg.len || seg.len < 4) return;
-      // Jamais sur départ, fin, slide ou wall jump
-      if (['start', 'end', 'walljump', 'slide'].includes(seg.type)) return;
-      // Seulement dans la seconde moitié
-      if (idx < Math.floor(total * 0.45)) return;
+    let placedZones = 0;
+    const maxZones = spikeDensity * 3;
 
-      // Spikes doivent être au centre, jamais sur le bord d'appel (seg.x + len - 1)
-      // ni sur le bord d'atterrissage (seg.x)
-      if (this.rng.bool(0.6)) {
-        // Choisit un point central
-        const ex = seg.x + this.rng.int(1, seg.len - 2);
-        const ey = seg.y - 1;
+    for (let idx = startIndex; idx < total; idx++) {
+      if (placedZones >= maxZones) break;
+      const seg = this.segments[idx];
 
-        // Refuser si dans une zone de wall jump ou si tuile non vide
-        if (isInWJZone(ex, ey)) return;
+      // Ne pas spiker les zones de départ, fin, ou les petits sauts trop simples
+      if (['start', 'end'].includes(seg.type) || (seg.len && seg.len < 3)) continue;
 
-        // Refuser si adjacent à un item
-        const isNearItem = this.items.some(i => i.y === ey && Math.abs(i.x - ex) <= 1);
-        if (isNearItem) return;
+      // Type de placement selon la forme du segment
 
-        if (this._get(ex, ey) === TILE.EMPTY && this._get(ex, seg.y) === TILE.SOLID) {
-          this._set(ex, ey, TILE.SPIKE);
-          placed++;
+      // 1. Spikes sur les plafonds (SPIKE_DOWN)
+      // Fréquent dans les longs couloirs où l'on glisse ou marche
+      if (seg.type === 'slide') {
+        if (this.rng.bool(0.7 * (spikeDensity / 10))) {
+          // Placer quelques pics au plafond du slide
+          for (let i = 2; i < seg.len - 1; i++) {
+             if (this.rng.bool(0.4)) {
+               tryPlaceSpike(seg.x + i, seg.y - 1, TILE.SPIKE_DOWN);
+             }
+          }
+          placedZones++;
         }
       }
-    });
-  }
 
+      // 2. Tapis de pics (SPIKE_UP) au fond des précipices (remplace la zone de mort visuellement parfois)
+      else if (seg.type === 'dash' || seg.type === 'normal') {
+        // Chercher s'il y a un grand vide sous ou avant ce segment
+        if (this.rng.bool(0.5 * (spikeDensity / 10))) {
+          const pitX = seg.x - this.rng.int(2, 4);
+          let pitY = seg.y + this.rng.int(3, 6);
+          // Chercher le premier sol en descendant
+          while (pitY < this.H - 2 && this._get(pitX, pitY) === TILE.EMPTY) {
+             pitY++;
+          }
+
+          if (pitY < this.H - 2 && this._get(pitX, pitY) === TILE.SOLID) {
+             // On a trouvé un fond, on y place un tapis de pics
+             let spikeCount = 0;
+             for (let i = -2; i <= 2; i++) {
+               if (this._get(pitX + i, pitY) === TILE.SOLID) {
+                 if(tryPlaceSpike(pitX + i, pitY - 1, TILE.SPIKE_UP)) spikeCount++;
+               }
+             }
+             if (spikeCount > 0) placedZones++;
+          }
+        }
+
+        // 3. Spikes sur les côtés des murs (SPIKE_LEFT / SPIKE_RIGHT)
+        // Utile pour forcer des sauts précis autour des piliers
+        if (this.rng.bool(0.6 * (spikeDensity / 10))) {
+          // On cherche un mur vertical qui descend sous la plateforme
+          const leftWallX = seg.x;
+          const rightWallX = seg.x + seg.len - 1;
+
+          // Pics sur le mur gauche (SPIKE_LEFT)
+          if (this.rng.bool(0.5)) {
+             let placed = false;
+             for (let dy = 1; dy < 4; dy++) {
+                if (this._get(leftWallX, seg.y + dy) === TILE.SOLID) {
+                   if (tryPlaceSpike(leftWallX - 1, seg.y + dy, TILE.SPIKE_LEFT)) placed = true;
+                }
+             }
+             if (placed) placedZones++;
+          }
+
+          // Pics sur le mur droit (SPIKE_RIGHT)
+          if (this.rng.bool(0.5)) {
+             let placed = false;
+             for (let dy = 1; dy < 4; dy++) {
+                if (this._get(rightWallX, seg.y + dy) === TILE.SOLID) {
+                   if (tryPlaceSpike(rightWallX + 1, seg.y + dy, TILE.SPIKE_RIGHT)) placed = true;
+                }
+             }
+             if (placed) placedZones++;
+          }
+        }
+
+        // 4. Placement classique (SPIKE_UP sur la plateforme)
+        if (this.rng.bool(0.4 * (spikeDensity / 10))) {
+          const ex = seg.x + this.rng.int(1, seg.len - 2);
+          const ey = seg.y - 1;
+          if (this._get(ex, seg.y) === TILE.SOLID) {
+            if (tryPlaceSpike(ex, ey, TILE.SPIKE_UP)) placedZones++;
+          }
+        }
+      }
+    }
+  }
   // ── Skip intentionnel : raccourci difficile mais récompensant ──
   // Plateforme haute accessible uniquement par saut très précis.
   // Le joueur safe peut l'ignorer ; le speedrunner avancé la visera.
@@ -977,7 +1086,7 @@ class SpeedrunMapGenerator {
       const t = this.grid[y][x];
       if (t === TILE.DASH) dc++;
       if (t === TILE.SLIDE) sc++;
-      if (t === TILE.SPIKE) sp++;
+      if (t === TILE.SPIKE_UP || t === TILE.SPIKE_DOWN || t === TILE.SPIKE_LEFT || t === TILE.SPIKE_RIGHT) sp++;
     }
     const mainSegs = this.segments.filter(s => !s.shortcut && !s.skip).length;
     // Temps estimé basé sur les segments principaux uniquement
@@ -997,12 +1106,28 @@ class SpeedrunMapGenerator {
   // Remplit sous chaque plateforme et sur les côtés inutilisés
   // → les plateformes deviennent des corniches, pas des îlots flottants
   _fillTerrain() {
-    // Remplir en-dessous de chaque segment jusqu'en bas (this.H)
-    for (const seg of this.segments) {
+    // Décider des zones pour un rendu type Celeste (îles) ou Caverne (rempli)
+    let isCelesteZone = this.rng.bool(0.5); // 50% de sections type Celeste
+
+    // Remplir en-dessous de chaque segment
+    for (let i = 0; i < this.segments.length; i++) {
+      const seg = this.segments[i];
       if (!seg.len) continue;
+
+      // Alterner le style de zone
+      if (i > 0 && i % this.rng.int(3, 5) === 0) {
+        isCelesteZone = this.rng.bool(0.5);
+      }
+
+      // En zone Celeste, on ne remplit qu'un pilier partiel (épaisseur variable)
+      let depth = this.H - 1 - seg.y;
+      if (isCelesteZone && seg.type !== 'start' && seg.type !== 'end') {
+        depth = this.rng.int(1, Math.min(6, this.H - 1 - seg.y));
+      }
+
       for (let sx = seg.x; sx < seg.x + seg.len; sx++) {
         if (sx < 1 || sx >= this.W - 1) continue;
-        for (let sy = seg.y + 1; sy < this.H - 1; sy++) {
+        for (let sy = seg.y + 1; sy <= seg.y + depth && sy < this.H - 1; sy++) {
           if (this._get(sx, sy) === TILE.EMPTY) this._set(sx, sy, TILE.SOLID);
         }
       }
@@ -1055,9 +1180,24 @@ class MapRenderer {
     ctx.shadowBlur = 0;
     ctx.strokeStyle = col.stroke; ctx.lineWidth = tile === TILE.WALL ? 2.5 : 1;
     ctx.strokeRect(px + .5, py + .5, ts - 1, ts - 1);
-    if (tile === TILE.SPIKE) {
+    if (tile === TILE.SPIKE_UP) {
       ctx.fillStyle = '#fca5a5'; ctx.beginPath();
       ctx.moveTo(px + ts / 2, py + 2); ctx.lineTo(px + ts - 2, py + ts - 2); ctx.lineTo(px + 2, py + ts - 2);
+      ctx.closePath(); ctx.fill();
+    }
+    if (tile === TILE.SPIKE_DOWN) {
+      ctx.fillStyle = '#fca5a5'; ctx.beginPath();
+      ctx.moveTo(px + ts / 2, py + ts - 2); ctx.lineTo(px + ts - 2, py + 2); ctx.lineTo(px + 2, py + 2);
+      ctx.closePath(); ctx.fill();
+    }
+    if (tile === TILE.SPIKE_LEFT) {
+      ctx.fillStyle = '#fca5a5'; ctx.beginPath();
+      ctx.moveTo(px + 2, py + ts / 2); ctx.lineTo(px + ts - 2, py + 2); ctx.lineTo(px + ts - 2, py + ts - 2);
+      ctx.closePath(); ctx.fill();
+    }
+    if (tile === TILE.SPIKE_RIGHT) {
+      ctx.fillStyle = '#fca5a5'; ctx.beginPath();
+      ctx.moveTo(px + ts - 2, py + ts / 2); ctx.lineTo(px + 2, py + 2); ctx.lineTo(px + 2, py + ts - 2);
       ctx.closePath(); ctx.fill();
     }
     if (tile === TILE.SOLID) {
@@ -1137,6 +1277,27 @@ function buildGodotGuide(gen) {
     <div class="step-num">8</div><div class="step-text">
       Plafond à <strong>2 cases</strong> (32px) — joueur debout bloqué.<br/>
       ${slideS.map((s, i) => `<br/>• Couloir ${i + 1} : <code>${coord(s.x, s.y)}</code> — longueur <code>${s.len || 5}</code> cases`).join('')}
+    </div></div></div>`;
+
+  let spikeCount = 0;
+  for (let y = 0; y < gen.H; y++) {
+    for (let x = 0; x < gen.W; x++) {
+      let t = gen.grid[y][x];
+      if (t === TILE.SPIKE_UP || t === TILE.SPIKE_DOWN || t === TILE.SPIKE_LEFT || t === TILE.SPIKE_RIGHT) spikeCount++;
+    }
+  }
+
+  if (spikeCount > 0) html += `
+  <div class="export-section"><h3>💀 Spikes (${spikeCount})</h3><div class="export-step">
+    <div class="step-num">9</div><div class="step-text">
+      Instance <code>res://res/Obstacles/spike.tscn</code>.<br/>
+      Selon son placement, tournez l'instance dans Godot (Rotation Degrees) :
+      <ul>
+        <li>Sol : 0°</li>
+        <li>Plafond : 180°</li>
+        <li>Mur Gauche : 90°</li>
+        <li>Mur Droit : -90°</li>
+      </ul>
     </div></div></div>`;
 
   html += `
