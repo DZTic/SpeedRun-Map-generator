@@ -79,13 +79,14 @@ class SpeedrunMapGenerator {
       this._buildVerticalCorridors();
     } else if (this.cfg.style === 'horizontal') {
       this._buildHorizontal();
-      this._buildHorizontalCorridors();
+      this._fillTerrain();
     } else {
       this._buildMixed();
       this._buildVerticalCorridors();
     }
 
     this._addBounds();
+    this._placeDeathZones();
     this._placePlayer();
     this._placeFinish();
     this._placeItems();
@@ -227,24 +228,6 @@ class SpeedrunMapGenerator {
     }
   }
 
-  _buildHorizontalCorridors() {
-    const H = this.H;
-    const path = this.segments.filter(s =>
-      ['start', 'normal', 'dash', 'slide', 'trampoline', 'end', 'normaljump'].includes(s.type)
-    );
-    for (const seg of path) {
-      if (!seg.len) continue;
-      // Épaisseur "Céleste" : soit grosse masse au sol si bas, soit bloc rectangulaire suspendu
-      const thickness = this.rng.int(3, 8);
-      const bottom = (seg.y > H - 12) ? H - 1 : Math.min(H - 1, seg.y + thickness);
-
-      for (let x = seg.x; x < seg.x + seg.len; x++) {
-        for (let y = seg.y + 1; y <= bottom; y++) {
-          if (y < H && this._get(x, y) === TILE.EMPTY) this._set(x, y, TILE.SOLID);
-        }
-      }
-    }
-  }
 
   // Segment normal : 2 zones — plateforme aux BORDS de zone pour utiliser toute la largeur.
   // Zone gauche : finit à leftMax (bord droit de la zone).
@@ -478,19 +461,21 @@ class SpeedrunMapGenerator {
       segIndex++;
       const progress = segIndex / Math.max(estSections, 1);
 
-      // Celeste-like vertical journey
-      // Progressively changes altitude
+      // Céleste-like vertical journey
+      // Pour éviter le "tout droit" on force de vrais changements d'altitude
       let nextY;
-      if (progress < 0.35) {
-        // Go UP (from bottom to top)
-        nextY = Math.max(5, cy - this.rng.int(0, D.jH - 1));
-      } else if (progress < 0.70) {
-        // Go DOWN (plunge deeply)
-        nextY = Math.min(this.H - 6, cy + this.rng.int(0, D.vStep[1] + 1));
+      if (progress < 0.30) {
+        // Début : Montée constante
+        nextY = Math.max(5, cy - this.rng.int(1, D.jH - 1));
+      } else if (progress < 0.50) {
+        // Grosse descente rapide
+        nextY = Math.min(this.H - 6, cy + this.rng.int(2, D.vStep[1] + 2));
+      } else if (progress < 0.75) {
+        // Remontée raide
+        nextY = Math.max(5, cy - this.rng.int(2, D.jH));
       } else {
-        // Mixed chaotic (up or down)
-        nextY = cy + this.rng.int(-D.jH + 1, D.vStep[1]);
-        nextY = Math.max(5, Math.min(this.H - 6, nextY));
+        // Fin : Descente vers l'arrivée
+        nextY = Math.min(this.H - 6, cy + this.rng.int(1, D.vStep[1] + 1));
       }
 
       const terLen = this.rng.int(D.pMin + 1, D.pMax + 2);
@@ -588,13 +573,6 @@ class SpeedrunMapGenerator {
     const nx = cx + gap;
     if (nx + terLen >= this.W - 1) return null;
     this._platform(nx, nextY, terLen);
-    // Death zone tout au fond du précipice
-    const pitBottom = this.H - 2;
-    for (let gx = cx; gx < nx; gx++) {
-      for (let gy = pitBottom; gy < this.H - 1; gy++) {
-        if (this._get(gx, gy) === TILE.EMPTY) this._set(gx, gy, TILE.DEATHZONE);
-      }
-    }
     this.segments.push({ type: 'normal', x: nx, y: nextY, len: terLen });
     return { nextX: nx + terLen, nextY };
   }
@@ -609,13 +587,6 @@ class SpeedrunMapGenerator {
     const ny = Math.max(4, Math.min(this.H - 5, cy + this.rng.int(-1, 1))); // proche de cy
     terLen = Math.max(2, terLen - 1);
     this._platform(nx, ny, terLen);
-    // Death zone sous le gap (fond de la map)
-    const pitBottom = this.H - 2;
-    for (let gx = cx; gx < nx; gx++) {
-      for (let gy = pitBottom; gy < this.H - 1; gy++) {
-        if (this._get(gx, gy) === TILE.EMPTY) this._set(gx, gy, TILE.DEATHZONE);
-      }
-    }
     this.segments.push({ type: 'dash', x: nx, y: ny, len: terLen, fromX: cx, fromY: cy });
     return { nextX: nx + terLen, nextY: ny };
   }
@@ -738,7 +709,6 @@ class SpeedrunMapGenerator {
 
     this._platform(targetX, targetY, terLen);
     this.segments.push({ type: "normal", x: targetX, y: targetY, len: terLen });
-    return { nextX: targetX + terLen, nextY: targetY };
     return { nextX: targetX + terLen, nextY: targetY };
   }
 
@@ -877,6 +847,18 @@ class SpeedrunMapGenerator {
   // ─── Placement des items ───────────────────────────────────────
   // Règle : 1 potion UNIQUEMENT si le segment correspondant en a besoin.
   // Jamais de potion sur une plateforme normale (cela n'a aucun sens).
+  _placeDeathZones() {
+    const bottomY = this.H - 2;
+    for (let x = 1; x < this.W - 1; x++) {
+      // Check if the entire column above the bottom floor is empty
+      // up to a reasonable height (e.g. H - 10) to qualify as a "pit"
+      // or simply check if the tile directly above the floor is empty
+      if (this._get(x, bottomY) === TILE.EMPTY && this._get(x, bottomY - 1) === TILE.EMPTY) {
+        this._set(x, bottomY, TILE.DEATHZONE);
+      }
+    }
+  }
+
   _placeItems() {
     for (const seg of this.segments) {
       // Dash : potion sur la DERNIÈRE case de la plateforme d'approche
@@ -933,18 +915,27 @@ class SpeedrunMapGenerator {
     let placed = 0;
     this.segments.forEach((seg, idx) => {
       if (placed >= spikeDensity * 2) return;
-      if (!seg.len || seg.len < 3) return;
-      // Jamais sur départ, fin ou wall jump
-      if (['start', 'end', 'walljump'].includes(seg.type)) return;
+      // Demande au moins 4 cases de long pour pouvoir poser un pic sans bloquer
+      if (!seg.len || seg.len < 4) return;
+      // Jamais sur départ, fin, slide ou wall jump
+      if (['start', 'end', 'walljump', 'slide'].includes(seg.type)) return;
       // Seulement dans la seconde moitié
       if (idx < Math.floor(total * 0.45)) return;
-      // Spikes sur les bords des plateformes (mais JAMAIS sur le tout dernier bloc où le joueur DOIT sauter = frustrant)
-      if (this.rng.bool(0.5)) {
-        // Au lieu de mettre un pic sur l'edge droit (seg.x + seg.len - 1), on le met en `seg.x + seg.len - 2` ou `seg.x`
-        const ex = this.rng.bool() ? seg.x : seg.x + seg.len - 2;
+
+      // Spikes doivent être au centre, jamais sur le bord d'appel (seg.x + len - 1)
+      // ni sur le bord d'atterrissage (seg.x)
+      if (this.rng.bool(0.6)) {
+        // Choisit un point central
+        const ex = seg.x + this.rng.int(1, seg.len - 2);
         const ey = seg.y - 1;
+
         // Refuser si dans une zone de wall jump ou si tuile non vide
         if (isInWJZone(ex, ey)) return;
+
+        // Refuser si adjacent à un item
+        const isNearItem = this.items.some(i => i.y === ey && Math.abs(i.x - ex) <= 1);
+        if (isNearItem) return;
+
         if (this._get(ex, ey) === TILE.EMPTY && this._get(ex, seg.y) === TILE.SOLID) {
           this._set(ex, ey, TILE.SPIKE);
           placed++;
@@ -1006,7 +997,7 @@ class SpeedrunMapGenerator {
   // Remplit sous chaque plateforme et sur les côtés inutilisés
   // → les plateformes deviennent des corniches, pas des îlots flottants
   _fillTerrain() {
-    // PASS 1 : remplir en-dessous de chaque segment
+    // Remplir en-dessous de chaque segment jusqu'en bas (this.H)
     for (const seg of this.segments) {
       if (!seg.len) continue;
       for (let sx = seg.x; sx < seg.x + seg.len; sx++) {
@@ -1015,19 +1006,6 @@ class SpeedrunMapGenerator {
           if (this._get(sx, sy) === TILE.EMPTY) this._set(sx, sy, TILE.SOLID);
         }
       }
-    }
-    // PASS 2 : remplir les côtés (zones jamais accessibles)
-    // Pour chaque rangée, combler jusqu'à 2 cases des bords non-vides
-    for (let y = 1; y < this.H - 1; y++) {
-      let L = this.W, R = 0;
-      for (let x = 1; x < this.W - 1; x++) {
-        if (this._get(x, y) !== TILE.EMPTY) { L = Math.min(L, x); R = Math.max(R, x); }
-      }
-      if (R < L) continue; // rangée vide → ignorer
-      for (let x = 1; x < L - 1; x++)
-        if (this._get(x, y) === TILE.EMPTY) this._set(x, y, TILE.SOLID);
-      for (let x = R + 2; x < this.W - 1; x++)
-        if (this._get(x, y) === TILE.EMPTY) this._set(x, y, TILE.SOLID);
     }
   }
 }
