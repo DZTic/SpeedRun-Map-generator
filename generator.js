@@ -67,10 +67,10 @@ class SpeedrunMapGenerator {
 
     // Difficulté → limites de saut
     this.D = {
-      easy: { jH: 4, jW: 4, pMin: 3, pMax: 6, vStep: [3, 4], wH: [4, 6], slideL: [5, 8] },
-      medium: { jH: 5, jW: 5, pMin: 2, pMax: 5, vStep: [4, 6], wH: [5, 8], slideL: [4, 7] },
-      hard: { jH: 6, jW: 6, pMin: 2, pMax: 4, vStep: [5, 7], wH: [6, 10], slideL: [4, 6] },
-      extreme: { jH: 7, jW: 7, pMin: 1, pMax: 3, vStep: [6, 8], wH: [7, 12], slideL: [3, 5] },
+ easy: { jH: 4, jW: 4, pMin: 3, pMax: 6, vStep: [2, 3], wH: [4, 6], slideL: [5, 8] },
+ medium: { jH: 5, jW: 5, pMin: 2, pMax: 5, vStep: [3, 4], wH: [5, 8], slideL: [4, 7] },
+ hard: { jH: 6, jW: 6, pMin: 2, pMax: 4, vStep: [4, 5], wH: [6, 10], slideL: [4, 6] },
+ extreme: { jH: 7, jW: 7, pMin: 1, pMax: 3, vStep: [5, 6], wH: [7, 12], slideL: [3, 5] },
     }[cfg.difficulty];
   }
 

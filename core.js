@@ -98,10 +98,10 @@ class MapContext {
         const maxW = CAPS.jW;
 
         this.D = {
-            easy:   { jH: Math.max(2, Math.floor(maxH * 0.5)), jW: Math.max(2, Math.floor(maxW * 0.5)), pMin: 3, pMax: 6, vStep: [3, 4], wH: [4, 6],  slideL: [5, 8], dashW: CAPS.dashW },
-            medium: { jH: Math.max(3, Math.floor(maxH * 0.7)), jW: Math.max(3, Math.floor(maxW * 0.7)), pMin: 2, pMax: 5, vStep: [4, 6], wH: [5, 8],  slideL: [4, 7], dashW: CAPS.dashW },
-            hard:   { jH: Math.max(4, Math.floor(maxH * 0.9)), jW: Math.max(4, Math.floor(maxW * 0.9)), pMin: 2, pMax: 4, vStep: [5, 7], wH: [6, 10], slideL: [4, 6], dashW: CAPS.dashW },
-            extreme:{ jH: maxH, jW: maxW, pMin: 1, pMax: 3, vStep: [6, 8], wH: [7, 12], slideL: [3, 5], dashW: CAPS.dashW },
+ easy: { jH: Math.max(2, Math.floor(maxH * 0.5)), jW: Math.max(2, Math.floor(maxW * 0.5)), pMin: 3, pMax: 6, vStep: [2, 3], wH: [4, 6], slideL: [5, 8], dashW: CAPS.dashW },
+ medium: { jH: Math.max(3, Math.floor(maxH * 0.7)), jW: Math.max(3, Math.floor(maxW * 0.7)), pMin: 2, pMax: 5, vStep: [3, 4], wH: [5, 8], slideL: [4, 7], dashW: CAPS.dashW },
+ hard: { jH: Math.max(4, Math.floor(maxH * 0.9)), jW: Math.max(4, Math.floor(maxW * 0.9)), pMin: 2, pMax: 4, vStep: [4, 5], wH: [6, 10], slideL: [4, 6], dashW: CAPS.dashW },
+ extreme:{ jH: maxH, jW: maxW, pMin: 1, pMax: 3, vStep: [5, 6], wH: [7, 12], slideL: [3, 5], dashW: CAPS.dashW },
         }[cfg.difficulty];
     }
 
