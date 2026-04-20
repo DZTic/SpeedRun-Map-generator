@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🧬 Map Trainer IA — Apprendre par les votes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #060810;
+      --bg2: #0d1117;
+      --bg3: #161b22;
+      --border: rgba(255,255,255,0.07);
+      --primary: #7c3aed;
+      --primary-glow: #7c3aed44;
+      --success: #10b981;
+      --success-glow: #10b98130;
+      --danger: #ef4444;
+      --danger-glow: #ef444430;
+      --warning: #f59e0b;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --font: 'Inter', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── Header ─────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 28px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-icon {
+      font-size: 28px;
+      filter: drop-shadow(0 0 12px var(--primary));
+    }
+
+    .header-logo h1 {
+      font-size: 18px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a78bfa, #7c3aed);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-logo p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* ─── Buttons ─────────────────────────────────────── */
+    .btn {
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      border: none;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.18s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed, #5b21b6);
+      color: white;
+      box-shadow: 0 4px 20px var(--primary-glow);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px var(--primary-glow); }
+
+    .btn-success {
+      background: linear-gradient(135deg, #059669, #047857);
+      color: white;
+      box-shadow: 0 4px 20px var(--success-glow);
+    }
+    .btn-success:hover { transform: translateY(-1px); filter: brightness(1.1); }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      color: white;
+      box-shadow: 0 4px 16px var(--danger-glow);
+    }
+    .btn-danger:hover { transform: translateY(-1px); filter: brightness(1.1); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      color: white;
+    }
+
+    /* ─── Stats Bar ─────────────────────────────────────── */
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      padding: 14px 28px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 12px;
+    }
+
+    .stat-pill .val {
+      font-family: var(--mono);
+      font-weight: 700;
+      color: #a78bfa;
+    }
+
+    .accuracy-pill .val { color: var(--success); }
+    .generation-pill .val { color: var(--warning); }
+
+    /* ─── Main Layout ─────────────────────────────────── */
+    .main {
+      padding: 24px 28px;
+    }
+
+    /* ─── Section titre ─────────────────────────────────── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 16px;
+    }
+
+    .section-header h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .section-header p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* ─── Config Panel ─────────────────────────────────── */
+    .config-band {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .config-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .config-field label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .config-field input[type="number"] {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 14px;
+      padding: 7px 12px;
+      width: 90px;
+      outline: none;
+    }
+
+    .config-field input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    /* ─── Maps Grid ─────────────────────────────────────── */
+    .maps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+
+    /* ─── Map Card ─────────────────────────────────────── */
+    .map-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      position: relative;
+    }
+
+    .map-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(124, 58, 237, 0.3);
+    }
+
+    .map-card.voted-yes {
+      border-color: var(--success);
+      box-shadow: 0 0 24px var(--success-glow);
+    }
+
+    .map-card.voted-no {
+      border-color: var(--danger);
+      box-shadow: 0 0 24px var(--danger-glow);
+      opacity: 0.65;
+    }
+
+    .map-card-header {
+      padding: 12px 14px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .map-card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-dim);
+      font-family: var(--mono);
+    }
+
+    .map-tags {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 100px;
+      letter-spacing: 0.04em;
+    }
+
+    .tag-easy { background: #052e1640; color: #34d399; border: 1px solid #052e16; }
+    .tag-medium { background: #171a0c40; color: #fbbf24; border: 1px solid #292202; }
+    .tag-hard { background: #1f0a0a40; color: #f87171; border: 1px solid #3b0f0f; }
+    .tag-extreme { background: #1a062640; color: #c084fc; border: 1px solid #2d0a3e; }
+    .tag-style { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); }
+
+    /* ─── Canvas Wrapper ─────────────────────────────────── */
+    .canvas-wrapper {
+      position: relative;
+      overflow: hidden;
+      background: #060810;
+      cursor: pointer;
+      max-height: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .canvas-wrapper canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 320px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+
+    /* ─── Path toggle (chemin dessiné directement sur canvas) ── */
+
+    /* ─── Map Analysis Row ─────────────────────────────────── */
+    .map-analysis {
+      padding: 10px 14px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+    }
+
+    .analysis-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .analysis-item .ico { font-size: 12px; }
+    .analysis-item .num { font-weight: 700; color: var(--text-dim); font-family: var(--mono); }
+
+    /* ─── Vote Zone ─────────────────────────────────────── */
+    .vote-zone {
+      padding: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .vote-btn {
+      flex: 1;
+      padding: 12px 10px;
+      border-radius: var(--radius-sm);
+      border: none;
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .vote-yes {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--success);
+      border: 1.5px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .vote-yes:hover {
+      background: rgba(16, 185, 129, 0.25);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px var(--success-glow);
+    }
+
+    .vote-yes.active {
+      background: var(--success);
+      color: white;
+      box-shadow: 0 4px 20px var(--success-glow);
+    }
+
+    .vote-no {
+      background: rgba(239, 68, 68, 0.10);
+      color: var(--danger);
+      border: 1.5px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .vote-no:hover {
+      background: rgba(239, 68, 68, 0.22);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px var(--danger-glow);
+    }
+
+    .vote-no.active {
+      background: var(--danger);
+      color: white;
+      box-shadow: 0 4px 20px var(--danger-glow);
+    }
+
+    /* ─── Voted Badge ─────────────────────────────────────── */
+    .voted-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .voted-badge.yes {
+      background: var(--success);
+      color: white;
+      box-shadow: 0 0 16px var(--success-glow);
+    }
+
+    .voted-badge.no {
+      background: var(--danger);
+      color: white;
+      box-shadow: 0 0 16px var(--danger-glow);
+    }
+
+    /* ─── Empty State ─────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      grid-column: 1 / -1;
+    }
+
+    .empty-state .empty-ico {
+      font-size: 56px;
+      display: block;
+      margin-bottom: 16px;
+      filter: grayscale(0.4);
+    }
+
+    .empty-state h3 {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #a78bfa, #7c3aed);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .empty-state p {
+      color: var(--text-muted);
+      font-size: 14px;
+      max-width: 420px;
+      margin: 0 auto 24px;
+      line-height: 1.6;
+    }
+
+    /* ─── Loading ─────────────────────────────────────── */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(6,8,16,0.85);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .loading-overlay.active {
+      display: flex;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(124,58,237,0.3);
+      border-top-color: #7c3aed;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    /* ─── Champions ─────────────────────────────────────── */
+    .champions-panel {
+      background: var(--bg2);
+      border: 1px solid rgba(124, 58, 237, 0.25);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-top: 32px;
+    }
+
+    .champions-panel h3 {
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 14px;
+      color: #a78bfa;
+    }
+
+    .champion-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .champion-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 12px;
+    }
+
+    .champion-rank {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .champion-desc {
+      flex: 1;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .champion-score {
+      font-family: var(--mono);
+      font-weight: 700;
+      color: var(--success);
+      font-size: 12px;
+    }
+
+    /* ─── History Panel ─────────────────────────────────── */
+    .history-panel {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-top: 20px;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .history-panel h3 {
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 14px;
+      color: var(--text-dim);
+      position: sticky;
+      top: 0;
+      background: var(--bg2);
+      padding-bottom: 8px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .history-item:last-child { border-bottom: none; }
+
+    .vote-ico { font-size: 14px; }
+
+    /* ─── Evolve Banner ─────────────────────────────────── */
+    .evolve-banner {
+      display: none;
+      background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(91,33,182,0.1));
+      border: 1px solid rgba(124,58,237,0.4);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      flex-direction: row;
+      align-items: center;
+      gap: 16px;
+      animation: pulse 2s ease infinite;
+    }
+
+    .evolve-banner.show { display: flex; }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(124,58,237,0.3); }
+      50% { box-shadow: 0 0 20px 4px rgba(124,58,237,0.2); }
+    }
+
+    .evolve-banner-text { flex: 1; }
+    .evolve-banner-text h3 { font-size: 15px; font-weight: 800; color: #a78bfa; }
+    .evolve-banner-text p { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    /* ─── Progress bar for votes ─────────────────────────── */
+    .vote-progress {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .progress-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+    .progress-bar-wrap {
+      flex: 1;
+      height: 6px;
+      background: var(--bg2);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 100px;
+      background: linear-gradient(90deg, var(--primary), #a78bfa);
+      transition: width 0.4s ease;
+    }
+
+    .progress-count { font-size: 12px; font-family: var(--mono); font-weight: 700; color: var(--text-dim); white-space: nowrap; }
+
+    /* ─── Evolve Section ──────────────────────────────────── */
+    .evolve-section {
+      margin-top: 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .evolve-info {
+      flex: 1;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* ─── Scrollbar ───────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+    /* ─── Path toggle button ──────────────────────────────── */
+    .path-toggle {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 5;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .path-toggle:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+    .path-toggle.active { background: rgba(16,185,129,0.2); color: var(--success); border-color: rgba(16,185,129,0.4); }
+
+    /* ─── Gene info tooltip ──────────────────────────────── */
+    .gene-badge {
+      padding: 3px 8px;
+      background: rgba(124,58,237,0.15);
+      border: 1px solid rgba(124,58,237,0.3);
+      border-radius: 100px;
+      font-size: 10px;
+      font-family: var(--mono);
+      color: #a78bfa;
+      cursor: help;
+    }
+
+    /* ─── Nav back ──────────────────────────────────────── */
+    .nav-back {
+      color: var(--text-muted);
+      font-size: 12px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.15s;
+    }
+    .nav-back:hover { color: var(--text); }
+
+    /* ─── Gauge Bars ─────────────────────────────────────── */
+    .map-gauges {
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+    }
+
+    .gauge-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .gauge-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      width: 100px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .gauge-track {
+      flex: 1;
+      height: 6px;
+      background: var(--bg3);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+
+    .gauge-fill {
+      height: 100%;
+      border-radius: 100px;
+      transition: width 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .gauge-fill.level-none  { background: #374151; width: 4px; }
+    .gauge-fill.level-low   { background: linear-gradient(90deg, #d97706, #f59e0b); }
+    .gauge-fill.level-good  { background: linear-gradient(90deg, #059669, #10b981); }
+    .gauge-fill.level-high  { background: linear-gradient(90deg, #dc2626, #ef4444); }
+
+    .gauge-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 100px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .badge-none  { background: rgba(55,65,81,0.4);   color: #6b7280; border: 1px solid #374151; }
+    .badge-low   { background: rgba(217,119,6,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-good  { background: rgba(5,150,105,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-high  { background: rgba(220,38,38,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+
+    .gauge-count {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-dim);
+      width: 20px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-logo">
+      <a href="index.html" class="nav-back">← Retour</a>
+      <span class="logo-icon">🧬</span>
+      <div>
+        <h1>Map Trainer IA</h1>
+        <p>Vote sur les maps · L'algorithme apprend de tes préférences</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="btn-export-champs" class="btn btn-ghost" title="Exporter les gènes champions">
+        📤 Exporter champions
+      </button>
+      <button id="btn-reset" class="btn btn-ghost">
+        🗑 Réinitialiser
+      </button>
+      <button id="btn-generate-batch" class="btn btn-primary">
+        🧬 Générer un batch
+      </button>
+    </div>
+  </header>
+
+  <!-- Stats Bar -->
+  <div class="stats-bar">
+    <div class="stat-pill generation-pill">
+      🧬 Génération <span class="val" id="stat-gen">0</span>
+    </div>
+    <div class="stat-pill">
+      🗳 Votes totaux <span class="val" id="stat-votes">0</span>
+    </div>
+    <div class="stat-pill accuracy-pill">
+      👍 Taux d'approbation <span class="val" id="stat-approval">—</span>
+    </div>
+    <div class="stat-pill">
+      🏆 Champions <span class="val" id="stat-champs">0</span>
+    </div>
+    <div class="stat-pill" id="progress-pill" style="display:none">
+      📊 Ce batch : <span class="val" id="stat-batch-progress">0/6 votés</span>
+    </div>
+  </div>
+
+  <main class="main">
+    <!-- Config band -->
+    <div class="config-band">
+      <div class="config-field">
+        <label>Largeur (cases)</label>
+        <input type="number" id="cfg-w" value="25" min="15" max="60" />
+      </div>
+      <div class="config-field">
+        <label>Hauteur (cases)</label>
+        <input type="number" id="cfg-h" value="40" min="20" max="100" />
+      </div>
+      <div style="flex:1"></div>
+      <div style="font-size:12px; color: var(--text-muted); max-width: 380px; line-height: 1.5;">
+        👋 <strong style="color:var(--text)">Comment ça marche :</strong> Clique "Générer un batch" pour voir 6 maps. 
+        Vote <span style="color:var(--success)">👍 Bien</span> ou <span style="color:var(--danger)">👎 Nul</span> sur chacune. 
+        L'IA copie les bonnes maps et évolue !
+      </div>
+    </div>
+
+    <!-- Evolve Banner (visible quand tout voté) -->
+    <div class="evolve-banner" id="evolve-banner">
+      <span style="font-size:32px">🧬</span>
+      <div class="evolve-banner-text">
+        <h3>Toutes les maps ont été votées !</h3>
+        <p>L'algorithme est prêt à évoluer · Les bonnes maps vont influencer la prochaine génération</p>
+      </div>
+      <button class="btn btn-primary" id="btn-evolve">
+        ⚡ Évoluer → Génération suivante
+      </button>
+    </div>
+
+    <!-- Vote Progress -->
+    <div class="vote-progress" id="vote-progress" style="display:none">
+      <span class="progress-label">Progression des votes :</span>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+      <span class="progress-count" id="progress-count">0 / 6</span>
+    </div>
+
+    <!-- Section header -->
+    <div class="section-header">
+      <div>
+        <h2 id="batch-title">🎲 Aucun batch généré</h2>
+        <p id="batch-subtitle">Lance un batch pour commencer l'entraînement de l'IA</p>
+      </div>
+    </div>
+
+    <!-- Maps Grid -->
+    <div class="maps-grid" id="maps-grid">
+      <!-- Empty State -->
+      <div class="empty-state">
+        <span class="empty-ico">🧬</span>
+        <h3>Démarre l'entraînement</h3>
+        <p>
+          Clique sur <strong>"Générer un batch"</strong> pour voir 6 maps générées automatiquement.<br>
+          Vote sur chacune et l'algorithme apprend de tes préférences pour créer des maps de mieux en mieux !
+        </p>
+        <button class="btn btn-primary" onclick="document.getElementById('btn-generate-batch').click()">
+          🧬 Commencer
+        </button>
+      </div>
+    </div>
+
+    <!-- Champions Panel -->
+    <div class="champions-panel" id="champions-panel" style="display:none">
+      <h3>🏆 Champions — Meilleurs gènes conservés</h3>
+      <div class="champion-list" id="champion-list"></div>
+    </div>
+
+    <!-- History Panel -->
+    <div class="history-panel" id="history-panel" style="display:none">
+      <h3>📋 Historique des votes</h3>
+      <div id="history-list"></div>
+    </div>
+  </main>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">Génération des maps en cours…</div>
+  </div>
+
+  <!-- Scripts du générateur -->
+  <script src="core.js"></script>
+  <script src="path_generator.js"></script>
+  <script src="terrain_generator.js"></script>
+  <script src="decorator.js"></script>
+  <script src="renderer.js"></script>
+  <script src="trainer.js"></script>
+
+  <script>
+  /* ============================================================
+     TRAINER UI — Gestion de l'interface de vote
+     ============================================================ */
+
+  let engine = null;
+  let currentBatch = [];
+  let batchVotes = {}; // geneIndex → true/false
+  let showPaths = {}; // geneIndex → bool
+  let currentRenderer = null;
+
+  const TILE_SIZE_MINI = 8; // Petite taille de tuile pour les miniatures
+
+  function init() {
+    engine = new TrainerEngine();
+    updateStatsBar();
+    updateChampionsPanel();
+    updateHistoryPanel();
+  }
+
+  function updateStatsBar() {
+    if (!engine) return;
+    const s = engine.getStats();
+    document.getElementById('stat-gen').textContent = s.generation;
+    document.getElementById('stat-votes').textContent = s.totalVotes;
+    document.getElementById('stat-approval').textContent = s.totalVotes > 0 ? `${s.positiveRate}%` : '—';
+    document.getElementById('stat-champs').textContent = s.champions;
+
+    const votedCount = Object.keys(batchVotes).length;
+    const total = currentBatch.length;
+    if (total > 0) {
+      document.getElementById('stat-batch-progress').textContent = `${votedCount}/${total} votés`;
+      document.getElementById('progress-pill').style.display = 'flex';
+    } else {
+      document.getElementById('progress-pill').style.display = 'none';
+    }
+  }
+
+  function updateChampionsPanel() {
+    const panel = document.getElementById('champions-panel');
+    const list = document.getElementById('champion-list');
+    if (!engine || engine.champions.length === 0) {
+      panel.style.display = 'none';
+      return;
+    }
+    panel.style.display = 'block';
+    list.innerHTML = engine.champions.map((g, i) => {
+      const medals = ['🥇', '🥈', '🥉', '🏅'];
+      return `
+        <div class="champion-item">
+          <span class="champion-rank">${medals[i] || '🏅'}</span>
+          <span class="champion-desc">${g.describe()}</span>
+          <span class="champion-score">+${g.score || 0} pts</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function updateHistoryPanel() {
+    const panel = document.getElementById('history-panel');
+    const list = document.getElementById('history-list');
+    if (!engine || engine.history.length === 0) {
+      panel.style.display = 'none';
+      return;
+    }
+    panel.style.display = 'block';
+    const recent = [...engine.history].reverse().slice(0, 30);
+    list.innerHTML = recent.map(h => `
+      <div class="history-item">
+        <span class="vote-ico">${h.positive ? '👍' : '👎'}</span>
+        <span style="color: ${h.positive ? 'var(--success)' : 'var(--danger)'}; font-weight:600; font-size:10px;">
+          ${h.positive ? 'BIEN' : 'NUL'}
+        </span>
+        <span>Gén. ${h.generation}</span>
+        <span style="flex:1; font-family:var(--mono); font-size:10px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${h.geneDesc}</span>
+      </div>
+    `).join('');
+  }
+
+  /**
+   * Rendu d'une ligne de jauge colorée.
+   * @param {string} label  - libellé affiché
+   * @param {number} value  - valeur actuelle
+   * @param {Array}  steps  - [[min, level, badge], ...] du plus petit au plus grand
+   * @param {number} max    - valeur maximum de la barre
+   */
+  function buildGaugeRow(label, value, steps, max) {
+    // Trouver le palier actuel
+    let level = steps[0][1];
+    let badge = steps[0][2];
+    for (const [threshold, lvl, lbl] of steps) {
+      if (value >= threshold) { level = lvl; badge = lbl; }
+    }
+    const pct = Math.min(100, Math.round((value / max) * 100));
+    return `
+      <div class="gauge-row">
+        <span class="gauge-label">${label}</span>
+        <span class="gauge-count">${value}</span>
+        <div class="gauge-track">
+          <div class="gauge-fill level-${level}" style="width:${pct}%"></div>
+        </div>
+        <span class="gauge-badge badge-${level}">${badge}</span>
+      </div>`;
+  }
+
+  function updateVoteProgress() {
+    const total = currentBatch.length;
+    const voted = Object.keys(batchVotes).length;
+    if (total === 0) {
+      document.getElementById('vote-progress').style.display = 'none';
+      document.getElementById('evolve-banner').classList.remove('show');
+      return;
+    }
+    document.getElementById('vote-progress').style.display = 'flex';
+    const pct = Math.round(voted / total * 100);
+    document.getElementById('progress-fill').style.width = `${pct}%`;
+    document.getElementById('progress-count').textContent = `${voted} / ${total}`;
+
+    if (voted >= total) {
+      document.getElementById('evolve-banner').classList.add('show');
+    } else {
+      document.getElementById('evolve-banner').classList.remove('show');
+    }
+  }
+
+  // Génère un batch de maps et les affiche
+  async function generateBatch() {
+    if (!engine) return;
+
+    const gridW = parseInt(document.getElementById('cfg-w').value) || 25;
+    const gridH = parseInt(document.getElementById('cfg-h').value) || 40;
+
+    showLoading('Génération de 6 maps…');
+    batchVotes = {};
+    showPaths = {};
+
+    await new Promise(r => setTimeout(r, 50)); // Laisse le UI réagir
+
+    try {
+      currentBatch = engine.generateBatch(gridW, gridH);
+    } catch (e) {
+      console.error(e);
+      hideLoading();
+      return;
+    }
+
+    document.getElementById('batch-title').textContent = `🎲 Batch — Génération ${engine.generation + 1}`;
+    document.getElementById('batch-subtitle').textContent = `${currentBatch.length} maps générées · Vote sur chacune pour entraîner l'IA`;
+
+    renderBatchCards();
+    updateVoteProgress();
+    updateStatsBar();
+    hideLoading();
+  }
+
+  function renderBatchCards() {
+    const grid = document.getElementById('maps-grid');
+    grid.innerHTML = '';
+
+    if (currentBatch.length === 0) {
+      grid.innerHTML = '<div class="empty-state"><span class="empty-ico">😢</span><h3>Aucune map générée</h3></div>';
+      return;
+    }
+
+    currentBatch.forEach((mapData, idx) => {
+      const card = buildMapCard(mapData, idx);
+      grid.appendChild(card);
+      // Render async pour ne pas bloquer
+      setTimeout(() => renderMapOnCard(mapData, idx), idx * 60);
+    });
+  }
+
+  function buildMapCard(mapData, idx) {
+    const { gene, analysis } = mapData;
+    const stats = mapData.mapCtx.stats || { spikes: 0, dash: 0, slide: 0 };
+    const voted = batchVotes[idx];
+
+    const diffTags = {
+      easy: 'tag-easy', medium: 'tag-medium', hard: 'tag-hard', extreme: 'tag-extreme'
+    };
+
+    const card = document.createElement('div');
+    card.className = `map-card${voted === true ? ' voted-yes' : voted === false ? ' voted-no' : ''}`;
+    card.id = `card-${idx}`;
+
+    card.innerHTML = `
+      ${voted !== undefined ? `<div class="voted-badge ${voted ? 'yes' : 'no'}">${voted ? '👍 BIEN' : '👎 NUL'}</div>` : ''}
+      <div class="map-card-header">
+        <span class="map-card-title">MAP #${idx + 1}</span>
+        <div class="map-tags">
+          <span class="tag ${diffTags[gene.difficulty] || 'tag-style'}">${gene.difficulty.toUpperCase()}</span>
+          <span class="tag tag-style">${gene.style}</span>
+          <span class="gene-badge" title="${gene.describe()}">ADN ${idx + 1}</span>
+        </div>
+      </div>
+      <div class="canvas-wrapper" id="wrapper-${idx}">
+        <canvas id="canvas-${idx}"></canvas>
+        <button class="path-toggle" id="path-toggle-${idx}" onclick="togglePath(${idx})" style="display:none">
+          🏃 Chemin
+        </button>
+      </div>
+      <div class="map-analysis">
+        <div class="analysis-item"><span class="ico">📐</span><span class="num">${mapData.mapCtx.W}×${mapData.mapCtx.H}</span></div>
+        <div class="analysis-item"><span class="ico">🚀</span><span class="num">${analysis.totalSegments}</span><span>segments</span></div>
+        <div class="analysis-item"><span class="ico">🧱</span><span class="num">${analysis.wallJumps}</span><span>WJ</span></div>
+        <div class="analysis-item"><span class="ico">💛</span><span class="num">${analysis.dashes}</span><span>dash</span></div>
+        <div class="analysis-item"><span class="ico">💜</span><span class="num">${analysis.slides}</span><span>slide</span></div>
+        <div class="analysis-item"><span class="ico">📏</span><span class="num">+${analysis.heightGained}</span><span>cases</span></div>
+      </div>
+      <div class="map-gauges">
+        ${buildGaugeRow('☠️ Spikes', stats.spikes, [
+          [0,   'none', 'Aucun'],
+          [1,   'low',  'Peu'],
+          [6,   'good', 'Bien'],
+          [22,  'high', 'Trop'],
+        ], 30)}
+        ${buildGaugeRow('💛 Potions Dash', stats.dash, [
+          [0, 'none', 'Aucune'],
+          [1, 'good', 'Bien'],
+          [5, 'high', 'Trop'],
+        ], 8)}
+        ${buildGaugeRow('💜 Potions Slide', stats.slide, [
+          [0, 'none', 'Aucune'],
+          [1, 'good', 'Bien'],
+          [5, 'high', 'Trop'],
+        ], 8)}
+      </div>
+      <div class="vote-zone">
+        <button class="vote-btn vote-yes ${voted === true ? 'active' : ''}" id="vote-yes-${idx}" onclick="castVote(${idx}, true)">
+          👍 <span>Bien !</span>
+        </button>
+        <button class="vote-btn vote-no ${voted === false ? 'active' : ''}" id="vote-no-${idx}" onclick="castVote(${idx}, false)">
+          👎 <span>Nul</span>
+        </button>
+      </div>
+    `;
+
+    return card;
+  }
+
+  function renderMapOnCard(mapData, idx) {
+    const canvas = document.getElementById(`canvas-${idx}`);
+    if (!canvas) return;
+
+    const renderer = new MapRenderer(canvas);
+    // Calculer un zoom adapté à la largeur du wrapper
+    const wrapper = document.getElementById(`wrapper-${idx}`);
+    const wrapperW = wrapper ? wrapper.clientWidth : 340;
+    const desiredTileSize = Math.min(10, Math.floor(wrapperW / mapData.mapCtx.W));
+    renderer.tileSize = Math.max(5, desiredTileSize);
+    renderer.zoom = 1;
+
+    // Stocker le tileSize utilisé pour le dessin du chemin
+    mapData._tileSize = renderer.tileSize;
+
+    renderer.render(mapData.mapCtx.grid);
+
+    // Afficher le bouton de chemin
+    const pathBtn = document.getElementById(`path-toggle-${idx}`);
+    if (pathBtn) pathBtn.style.display = 'block';
+  }
+
+  function togglePath(idx) {
+    showPaths[idx] = !showPaths[idx];
+    const btn = document.getElementById(`path-toggle-${idx}`);
+    const canvas = document.getElementById(`canvas-${idx}`);
+    if (!canvas) return;
+
+    const mapData = currentBatch[idx];
+    if (!mapData) return;
+
+    if (showPaths[idx]) {
+      btn.classList.add('active');
+      btn.textContent = '🏃 Masquer chemin';
+      // Redessiner la map puis ajouter le chemin par-dessus
+      const renderer = new MapRenderer(canvas);
+      renderer.tileSize = mapData._tileSize || 8;
+      renderer.zoom = 1;
+      renderer.render(mapData.mapCtx.grid);
+      drawPlayerPathOnCanvas(idx, canvas);
+    } else {
+      btn.classList.remove('active');
+      btn.textContent = '🏃 Chemin';
+      // Redessiner la map seule (sans chemin)
+      const renderer = new MapRenderer(canvas);
+      renderer.tileSize = mapData._tileSize || 8;
+      renderer.zoom = 1;
+      renderer.render(mapData.mapCtx.grid);
+    }
+  }
+
+  function drawPlayerPathOnCanvas(idx, canvas) {
+    const mapData = currentBatch[idx];
+    if (!mapData || !mapData.playerPath) return;
+
+    const path = mapData.playerPath;
+    const W = mapData.mapCtx.W;
+    const H = mapData.mapCtx.H;
+    if (path.length < 2) return;
+
+    const ctx = canvas.getContext('2d');
+
+    // La taille d'une tuile en pixels canvas (résolution réelle, pas CSS)
+    const ts = mapData._tileSize || Math.floor(canvas.width / W);
+
+    // Convertir tuile → centre pixel canvas
+    const px = (p) => ({ x: (p.x + 0.5) * ts, y: (p.y + 0.5) * ts, type: p.type });
+    const pts = path.map(px);
+
+    // ── Ombre de la trajectoire ───────────────────────────
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.lineWidth = Math.max(3, ts * 0.5);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    // ── Ligne pointillée cyan ─────────────────────────────
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = Math.max(1.5, ts * 0.28);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.setLineDash([ts * 0.7, ts * 0.35]);
+    ctx.stroke();
+    ctx.restore();
+
+    // ── Points spéciaux ───────────────────────────────────
+    const POINT_COLORS = {
+      spawn:           { color: '#22d3ee', r: ts * 0.7, glow: '#22d3ee' },
+      finish:          { color: '#fbbf24', r: ts * 0.7, glow: '#fbbf24' },
+      walljump_enter:  { color: '#f87171', r: ts * 0.5, glow: '#f87171' },
+      walljump_climb:  { color: '#f87171', r: ts * 0.3, glow: null },
+      walljump_exit:   { color: '#f87171', r: ts * 0.5, glow: '#f87171' },
+      dash_start:      { color: '#fef08a', r: ts * 0.35, glow: null },
+      dash_land:       { color: '#fef08a', r: ts * 0.5, glow: '#fef08a' },
+      trampoline:      { color: '#34d399', r: ts * 0.5, glow: '#34d399' },
+      bounce:          { color: '#34d399', r: ts * 0.25, glow: null },
+      slide_start:     { color: '#c084fc', r: ts * 0.45, glow: '#c084fc' },
+      slide_mid:       { color: '#c084fc', r: ts * 0.25, glow: null },
+      slide_end:       { color: '#c084fc', r: ts * 0.35, glow: null },
+      jump_land:       { color: '#60a5fa', r: ts * 0.4, glow: null },
+      jump_start:      { color: '#60a5fa', r: ts * 0.3, glow: null },
+      walk:            { color: null,      r: 0,         glow: null },
+    };
+
+    pts.forEach((p) => {
+      const info = POINT_COLORS[p.type];
+      if (!info || !info.color) return;
+
+      ctx.save();
+
+      // Halo lumineux
+      if (info.glow) {
+        ctx.shadowColor = info.glow;
+        ctx.shadowBlur = info.r * 2;
+      }
+
+      // Cercle rempli
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, info.r, 0, Math.PI * 2);
+      ctx.fillStyle = info.color;
+      ctx.fill();
+
+      // Contour
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.restore();
+    });
+
+    // ── Icône spawn et finish ─────────────────────────────
+    ctx.save();
+    ctx.font = `${Math.max(8, ts)}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    pts.forEach((p) => {
+      if (p.type === 'spawn')  ctx.fillText('🏃', p.x, p.y);
+      if (p.type === 'finish') ctx.fillText('🏁', p.x, p.y);
+    });
+    ctx.restore();
+  }
+
+  function castVote(idx, positive) {
+    if (!engine) return;
+
+    engine.vote(idx, positive);
+    batchVotes[idx] = positive;
+
+    // Mettre à jour la carte
+    const card = document.getElementById(`card-${idx}`);
+    if (card) {
+      card.className = `map-card ${positive ? 'voted-yes' : 'voted-no'}`;
+
+      // Badge
+      const existingBadge = card.querySelector('.voted-badge');
+      if (existingBadge) existingBadge.remove();
+      const badge = document.createElement('div');
+      badge.className = `voted-badge ${positive ? 'yes' : 'no'}`;
+      badge.textContent = positive ? '👍 BIEN' : '👎 NUL';
+      card.insertBefore(badge, card.firstChild);
+
+      // Boutons
+      const yesBtn = document.getElementById(`vote-yes-${idx}`);
+      const noBtn = document.getElementById(`vote-no-${idx}`);
+      if (yesBtn) yesBtn.className = `vote-btn vote-yes${positive ? ' active' : ''}`;
+      if (noBtn) noBtn.className = `vote-btn vote-no${!positive ? ' active' : ''}`;
+    }
+
+    updateVoteProgress();
+    updateStatsBar();
+    updateHistoryPanel();
+  }
+
+  function evolve() {
+    if (!engine) return;
+    
+    engine.evolve();
+    
+    // Réinitialiser le batch pour la prochaine génération
+    document.getElementById('evolve-banner').classList.remove('show');
+    
+    updateStatsBar();
+    updateChampionsPanel();
+    updateHistoryPanel();
+
+    // Auto-générer le prochain batch
+    generateBatch();
+  }
+
+  function showLoading(text) {
+    document.getElementById('loading-text').textContent = text || 'Chargement…';
+    document.getElementById('loading-overlay').classList.add('active');
+  }
+
+  function hideLoading() {
+    document.getElementById('loading-overlay').classList.remove('active');
+  }
+
+  // ─── Event Listeners ────────────────────────────────────
+  document.getElementById('btn-generate-batch').addEventListener('click', generateBatch);
+
+  document.getElementById('btn-evolve').addEventListener('click', evolve);
+
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    if (!confirm('⚠️ Réinitialiser TOUT l\'historique d\'apprentissage ? Cette action est irréversible.')) return;
+    engine.resetAll();
+    currentBatch = [];
+    batchVotes = {};
+    showPaths = {};
+    document.getElementById('maps-grid').innerHTML = `
+      <div class="empty-state">
+        <span class="empty-ico">🧬</span>
+        <h3>Entraînement réinitialisé</h3>
+        <p>Clique sur "Générer un batch" pour recommencer à zéro.</p>
+        <button class="btn btn-primary" onclick="document.getElementById('btn-generate-batch').click()">🧬 Commencer</button>
+      </div>
+    `;
+    document.getElementById('evolve-banner').classList.remove('show');
+    document.getElementById('vote-progress').style.display = 'none';
+    document.getElementById('champions-panel').style.display = 'none';
+    document.getElementById('history-panel').style.display = 'none';
+    updateStatsBar();
+  });
+
+  document.getElementById('btn-export-champs').addEventListener('click', () => {
+    if (!engine || engine.champions.length === 0) {
+      alert('Aucun champion à exporter. Commence par voter sur des maps !');
+      return;
+    }
+    const data = engine.exportChampions();
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `map_champions_gen${engine.generation}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // ─── Init ───────────────────────────────────────────────
+  init();
+  </script>
+</body>
+</html>

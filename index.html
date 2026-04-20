@@ -23,6 +23,9 @@
       </div>
     </div>
     <div class="header-actions">
+      <a href="trainer.html" class="btn btn-ghost" style="text-decoration:none; background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(91,33,182,0.1)); border: 1px solid rgba(124,58,237,0.35); color:#a78bfa;">
+        🧬 Trainer IA
+      </a>
       <button id="btn-generate" class="btn btn-primary">
         <span>⚡</span> Générer une map
       </button>
@@ -44,19 +47,19 @@
         <div class="field">
           <label>Difficulté</label>
           <div class="segmented" id="difficulty">
-            <button class="seg-btn active" data-val="easy">Facile</button>
-            <button class="seg-btn" data-val="medium">Moyen</button>
-            <button class="seg-btn" data-val="hard">Difficile</button>
-            <button class="seg-btn" data-val="extreme">Extrême</button>
+            <button class="seg-btn active" data-group="diff" data-val="easy">Facile</button>
+            <button class="seg-btn" data-group="diff" data-val="medium">Moyen</button>
+            <button class="seg-btn" data-group="diff" data-val="hard">Difficile</button>
+            <button class="seg-btn" data-group="diff" data-val="extreme">Extrême</button>
           </div>
         </div>
 
         <div class="field">
           <label>Style de parcours</label>
           <div class="segmented" id="style">
-            <button class="seg-btn active" data-val="vertical">Vertical</button>
-            <button class="seg-btn" data-val="horizontal">Horizontal</button>
-            <button class="seg-btn" data-val="mixed">Mixte</button>
+            <button class="seg-btn active" data-group="style" data-val="vertical">Vertical</button>
+            <button class="seg-btn" data-group="style" data-val="horizontal">Horizontal</button>
+            <button class="seg-btn" data-group="style" data-val="mixed">Mixte</button>
           </div>
         </div>
 
@@ -240,7 +243,12 @@
     </div>
   </div>
 
-  <script src="generator.js"></script>
+  <script src="core.js"></script>
+  <script src="path_generator.js"></script>
+  <script src="terrain_generator.js"></script>
+  <script src="decorator.js"></script>
+  <script src="renderer.js"></script>
+  <script src="main.js"></script>
 </body>
 
 </html>
