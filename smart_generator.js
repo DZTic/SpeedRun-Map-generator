@@ -375,11 +375,25 @@ class SmartGenerator {
  // Fin
  path.push({ type: 'end', x: cx, y: cy, len: D.pMin + 1 });
  
- this.ctx.segments = path;
+ ctx.segments = path;
  this._buildStructure(path);
  this._placeStartEnd(path);
- 
- return this.ctx.grid;
+
+ // Définir stats même en fallback
+ const dashCount = ctx.items.filter(i => i.type === TILE.DASH).length;
+ const slideCount = ctx.items.filter(i => i.type === TILE.SLIDE).length;
+ ctx.stats = {
+ size: `${ctx.W} × ${ctx.H}`,
+ route: `${path.length} sections`,
+ shortcuts: 0,
+ dash: dashCount,
+ slide: slideCount,
+ spikes: 0,
+ time: '30s',
+ difficulty: 'fallback'
+ };
+
+ return ctx.grid;
  }
 }
 
