@@ -10,71 +10,26 @@ class TerrainGenerator {
         this.tunnelH = 4.5; // Rayon de creusement standard
     }
 
-    generate() {
-        const ctx = this.ctx;
+ generate() {
+ this.generateWithWaypoints(null);
+ }
 
-        // 1. Initialiser tout en roche (SOLID)
-        for (let y = 0; y < ctx.H; y++) {
-            for (let x = 0; x < ctx.W; x++) {
-                ctx.set(x, y, TILE.SOLID);
-            }
-        }
+ generateWithWaypoints(externalWaypoints = null) {
+ const ctx = this.ctx;
 
-        // 2. Extraire la liste des waypoints successifs pour créer un chemin continu
-        let waypoints = [];
-        for (let i = 0; i < ctx.segments.length; i++) {
-            let seg = ctx.segments[i];
+ // 1. Initialiser tout en roche (SOLID)
+ for (let y = 0; y < ctx.H; y++) {
+ for (let x = 0; x < ctx.W; x++) {
+ ctx.set(x, y, TILE.SOLID);
+ }
+ }
 
-            let rNorm = this.tunnelH;
+ // 2. Extraire la liste des waypoints
+ let waypoints = externalWaypoints || this._extractWaypoints();
 
-            if (seg.type === 'start') {
-                waypoints.push({ x: seg.x, y: seg.y - 2, r: rNorm });
-                waypoints.push({ x: seg.x + seg.len, y: seg.y - 2, r: rNorm });
-            }
-            else if (seg.type === 'walljump') {
-                // Point d'entrée du mur
-                let entryX = (seg.dir === 1) ? seg.x - 3 : seg.x + 3;
-                let bottomY = seg.y + seg.wallH;
-
-                // Assurer que le tunnel va jusqu'au bas du walljump
-                waypoints.push({ x: entryX, y: bottomY - 1, r: rNorm });
-
-                // Remonter le long du mur
-                waypoints.push({ x: entryX, y: seg.y - 1, r: rNorm });
-
-                // Connecter à la plateforme de sortie
-                waypoints.push({ x: seg.platformX, y: seg.y - 2, r: rNorm });
-                waypoints.push({ x: seg.platformX + seg.len, y: seg.y - 2, r: rNorm });
-            }
-            else if (seg.type === 'slide') {
-                waypoints.push({ x: seg.x, y: seg.y - 1, r: 2.5 }); // Espace restreint
-                waypoints.push({ x: seg.x + seg.len, y: seg.y - 1, r: 2.5 });
-            }
-            else if (seg.type === 'trampoline') {
-                waypoints.push({ x: seg.x + 1, y: seg.y - 4, r: rNorm + 2 }); // Plus de place au-dessus
-            }
-            else if (seg.type === 'turn') {
-                waypoints.push({ x: seg.x + (seg.len / 2), y: seg.y - 2, r: rNorm });
-            }
-            else if (seg.type === 'end') {
-                waypoints.push({ x: seg.x, y: seg.y - 2, r: rNorm });
-                waypoints.push({ x: seg.x + seg.len, y: seg.y - 2, r: rNorm });
-            }
-            else {
-                // dash, normal
-                let sx = seg.fromX !== undefined ? seg.fromX : seg.x;
-                let sy = seg.fromY !== undefined ? seg.fromY : seg.y;
-                if (seg.fromX !== undefined) {
-                    waypoints.push({ x: sx, y: sy - 2, r: rNorm });
-                }
-                waypoints.push({ x: seg.x, y: seg.y - 2, r: rNorm });
-                waypoints.push({ x: seg.x + (seg.len || 1), y: seg.y - 2, r: rNorm });
-            }
-        }
-
-        // 3. Lisser les waypoints (Catmull-Rom simplifiée pour éviter les angles trop secs)
-        let smoothedWaypoints = [];
-        if (waypoints.length > 2) {
+ // 3. Lisser les waypoints (Catmull-Rom simplifiée pour éviter les angles trop secs)
+ let smoothedWaypoints = [];
+ if (waypoints.length > 2) {
             smoothedWaypoints.push(waypoints[0]);
             for (let i = 0; i < waypoints.length - 1; i++) {
                 let p0 = i === 0 ? waypoints[i] : waypoints[i - 1];
@@ -267,13 +222,61 @@ class TerrainGenerator {
             }
         }
 
-        // Appliquer
-        for (let y = 0; y < ctx.H; y++) {
-            for (let x = 0; x < ctx.W; x++) {
-                ctx.set(x, y, newGrid[y * ctx.W + x]);
-            }
-        }
-    }
+ // Appliquer
+ for (let y = 0; y < ctx.H; y++) {
+ for (let x = 0; x < ctx.W; x++) {
+ ctx.set(x, y, newGrid[y * ctx.W + x]);
+ }
+ }
+ }
+
+ _extractWaypoints() {
+ const ctx = this.ctx;
+ const waypoints = [];
+ const rNorm = this.tunnelH;
+
+ for (let i = 0; i < ctx.segments.length; i++) {
+ let seg = ctx.segments[i];
+
+ if (seg.type === 'start') {
+ waypoints.push({ x: seg.x, y: seg.y - 2, r: rNorm });
+ waypoints.push({ x: seg.x + seg.len, y: seg.y - 2, r: rNorm });
+ }
+ else if (seg.type === 'walljump') {
+ let entryX = (seg.dir === 1) ? seg.x - 3 : seg.x + 3;
+ let bottomY = seg.y + seg.wallH;
+ waypoints.push({ x: entryX, y: bottomY - 1, r: rNorm });
+ waypoints.push({ x: entryX, y: seg.y - 1, r: rNorm });
+ waypoints.push({ x: seg.platformX, y: seg.y - 2, r: rNorm });
+ waypoints.push({ x: seg.platformX + seg.len, y: seg.y - 2, r: rNorm });
+ }
+ else if (seg.type === 'slide') {
+ waypoints.push({ x: seg.x, y: seg.y - 1, r: 2.5 });
+ waypoints.push({ x: seg.x + seg.len, y: seg.y - 1, r: 2.5 });
+ }
+ else if (seg.type === 'trampoline') {
+ waypoints.push({ x: seg.x + 1, y: seg.y - 4, r: rNorm + 2 });
+ }
+ else if (seg.type === 'turn') {
+ waypoints.push({ x: seg.x + (seg.len / 2), y: seg.y - 2, r: rNorm });
+ }
+ else if (seg.type === 'end') {
+ waypoints.push({ x: seg.x, y: seg.y - 2, r: rNorm });
+ waypoints.push({ x: seg.x + seg.len, y: seg.y - 2, r: rNorm });
+ }
+ else {
+ let sx = seg.fromX !== undefined ? seg.fromX : seg.x;
+ let sy = seg.fromY !== undefined ? seg.fromY : seg.y;
+ if (seg.fromX !== undefined) {
+ waypoints.push({ x: sx, y: sy - 2, r: rNorm });
+ }
+ waypoints.push({ x: seg.x, y: seg.y - 2, r: rNorm });
+ waypoints.push({ x: seg.x + (seg.len || 1), y: seg.y - 2, r: rNorm });
+ }
+ }
+
+ return waypoints;
+ }
 }
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -40,12 +40,27 @@ document.addEventListener('DOMContentLoaded', () => {
     seedInput.value = Math.random().toString(36).substring(2, 10);
   });
 
-  // Clear
-  btnClear.addEventListener('click', () => {
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    overlay.style.display = 'flex';
-  });
+// Clear
+ btnClear.addEventListener('click', () => {
+ const ctx = canvas.getContext('2d');
+ ctx.clearRect(0, 0, canvas.width, canvas.height);
+ overlay.style.display = 'flex';
+ document.getElementById('stats-row').style.display = 'none';
+ });
+
+// Update Stats
+function updateStats(stats) {
+ const statsRow = document.getElementById('stats-row');
+ statsRow.style.display = 'flex';
+ 
+ document.getElementById('stat-size').textContent = stats.size;
+ document.getElementById('stat-route').textContent = stats.route;
+ document.getElementById('stat-dash').textContent = stats.dash || 0;
+ document.getElementById('stat-slide').textContent = stats.slide || 0;
+ document.getElementById('stat-spikes').textContent = stats.spikes || 0;
+ document.getElementById('stat-shortcuts').textContent = stats.shortcuts || 0;
+ document.getElementById('stat-time').textContent = stats.time;
+}
 
   // Generate
   btnGenerate.addEventListener('click', () => {
@@ -57,20 +72,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Initialize core context
     const ctx = new MapContext(params);
 
-    // 2. Generate Map Structure
-    const pathGen = new PathGenerator(ctx);
-    pathGen.generate();
-
-    // 3. Generate Terrain & Carve Path
-    const terrainGen = new TerrainGenerator(ctx);
-    terrainGen.generate();
-
-    // 4. Place Hazards & Decorate
-    const decorator = new Decorator(ctx);
-    decorator.generate();
-
-    // 5. Render
-    const renderer = new MapRenderer(canvas);
-    renderer.render(ctx);
+ // 2. Generate Map Structure - NOUVEAU: SmartGenerator
+ const smartGen = new SmartGenerator(ctx);
+ const grid = smartGen.generate();
+ 
+ // 3. Generate Terrain & Carve Path (déjà inclus dans SmartGenerator)
+ // Le terrain est maintenant généré avec validation
+ 
+ // 4. Place Hazards & Decorate (déjà inclus)
+ 
+ // 5. Render
+ const renderer = new MapRenderer(canvas);
+ renderer.render(grid, ctx); // Passer ctx pour les stats
+ 
+ // 6. Afficher les statistiques de validation
+ if (ctx.stats) {
+ updateStats(ctx.stats);
+ }
   });
 });

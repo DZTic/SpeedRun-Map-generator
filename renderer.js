@@ -15,33 +15,34 @@ class MapRenderer {
         this.zoom = Math.max(0.3, Math.min(3, z));
     }
 
-    render(grid) {
-        if (!grid || !grid.length) return;
-        const H = grid.length, W = grid[0].length, ts = this.tileSize * this.zoom;
-        this.canvas.width = W * ts;
-        this.canvas.height = H * ts;
-        const ctx = this.ctx;
+ render(grid, ctx = null) {
+ if (!grid || !grid.length) return;
+ const H = grid.length, W = grid[0].length, ts = this.tileSize * this.zoom;
+ this.canvas.width = W * ts;
+ this.canvas.height = H * ts;
+ const c = this.ctx;
 
-        ctx.fillStyle = '#060810';
-        ctx.fillRect(0, 0, W * ts, H * ts);
+ const dzP = this._dzPat(c);
 
-        const dzP = this._dzPat(ctx);
-        for (let y = 0; y < H; y++) {
-            for (let x = 0; x < W; x++) {
-                if (grid[y][x] === TILE.EMPTY) continue;
-                this._tile(ctx, x, y, grid[y][x], ts, dzP);
-            }
-        }
+ c.fillStyle = '#060810';
+ c.fillRect(0, 0, W * ts, H * ts);
 
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = `${Math.max(8, ts * 0.62)}px serif`;
-        for (let y = 0; y < H; y++) {
-            for (let x = 0; x < W; x++) {
-                const e = EMOJI[grid[y][x]];
-                if (e) ctx.fillText(e, x * ts + ts / 2, y * ts + ts / 2);
-            }
-        }
+ for (let y = 0; y < H; y++) {
+ for (let x = 0; x < W; x++) {
+ if (grid[y][x] === TILE.EMPTY) continue;
+ this._tile(c, x, y, grid[y][x], ts, dzP);
+ }
+ }
+
+ c.textAlign = 'center';
+ c.textBaseline = 'middle';
+ c.font = `${Math.max(8, ts * 0.62)}px serif`;
+ for (let y = 0; y < H; y++) {
+ for (let x = 0; x < W; x++) {
+ const e = EMOJI[grid[y][x]];
+ if (e) c.fillText(e, x * ts + ts / 2, y * ts + ts / 2);
+ }
+ }
     }
 
     _dzPat(ctx) {
