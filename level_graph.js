@@ -360,7 +360,17 @@ class LevelGraph {
  
  _createDashNode(prev, nextY, goRight, D) {
  const len = this.ctx.rng.int(D.pMin, D.pMax);
- const dashGap = Math.min(PHYSICS.DASH_MAX_WIDTH, D.jW + 2);
+ 
+ // Le dash ne permet que très peu de variation verticale (max 2 cases)
+ // Donc on doit s'assurer que |deltaY| <= 2
+ const deltaY = Math.abs(prev.y - nextY);
+ if (deltaY > 2) {
+ // Impossible en dash, forcer un normal
+ return this._createNormalNode(prev, nextY, goRight, D);
+ }
+ 
+ // Gap = exactement la distance dash max (avec marge)
+ const dashGap = Math.max(2, PHYSICS.DASH_MAX_WIDTH - 1);
  
  let nx = goRight 
  ? Math.min(this.ctx.W - len - 2, prev.x + dashGap)
@@ -378,6 +388,13 @@ class LevelGraph {
  }
  
  _createSlideNode(prev, nextY, goRight, D) {
+ // Le slide ne permet que très peu de variation verticale (max 2 cases)
+ const deltaY = Math.abs(prev.y - nextY);
+ if (deltaY > 2) {
+ // Impossible en slide, forcer un normal
+ return this._createNormalNode(prev, nextY, goRight, D);
+ }
+ 
  const len = Math.min(PHYSICS.SLIDE_MAX_WIDTH, this.ctx.rng.int(...D.slideL));
  
  let nx = goRight
@@ -450,6 +467,13 @@ class LevelGraph {
  }
  
  _createHorizontalDashNode(prev, nextY, len, D) {
+ // Le dash ne permet que très peu de variation verticale (max 2 cases)
+ const deltaY = Math.abs(prev.y - nextY);
+ if (deltaY > 2) {
+ // Impossible en dash - forcer un normal
+ return this._createHorizontalNormalNode(prev, nextY, len, D);
+ }
+ 
  const dashGap = PHYSICS.DASH_MAX_WIDTH;
  
  return {
@@ -463,6 +487,13 @@ class LevelGraph {
  }
  
  _createHorizontalSlideNode(prev, nextY, len, D) {
+ // Le slide ne permet que très peu de variation verticale (max 2 cases)
+ const deltaY = Math.abs(prev.y - nextY);
+ if (deltaY > 2) {
+ // Impossible en slide - forcer un normal
+ return this._createHorizontalNormalNode(prev, nextY, len, D);
+ }
+ 
  const slideLen = Math.min(PHYSICS.SLIDE_MAX_WIDTH, this.ctx.rng.int(...D.slideL));
  
  return {
@@ -478,13 +509,18 @@ class LevelGraph {
  const wallThick = 2;
  const innerGap = 2;
  const totalW = wallThick * 2 + innerGap;
- const topY = prev.y - this.ctx.rng.int(...D.wH);
+ 
+ // Limiter wallH pour respecter PHYSICS.JUMP_MAX_HEIGHT
+ const maxWallH = 4; // PHYSICS.JUMP_MAX_HEIGHT + 2
+ const requestedWallH = this.ctx.rng.int(...D.wH);
+ const wallH = Math.min(maxWallH, requestedWallH);
+ const topY = prev.y - wallH;
  
  return {
  type: 'walljump',
  x: prev.x + prev.len + 1,
  y: topY,
- wallH: prev.y - topY,
+ wallH: wallH,
  innerGap: innerGap,
  platformX: prev.x + prev.len + totalW + 1,
  len: len

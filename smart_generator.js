@@ -11,7 +11,7 @@ class SmartGenerator {
  this.levelGraph = new LevelGraph(ctx);
  this.validator = new PlayabilityValidator(ctx);
  this.difficultyAnalyzer = new DifficultyValidator(ctx);
- this.maxAttempts = 5; // Nombre de tentatives si validation échoue
+ this.maxAttempts = 10; // Augmenté pour plus de chances de succès
  }
  
  // Génération principale avec validation
