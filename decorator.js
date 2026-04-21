@@ -16,17 +16,17 @@ class Decorator {
         this._computeStats();
     }
 
-    _placeDeathZones() {
-        const ctx = this.ctx;
-        // Placer une zone de mort au fond des précipices
-        // On cherche les colonnes où il y a du vide au dessus du bord inférieur
-        for (let x = 1; x < ctx.W - 1; x++) {
-            // Si le sol juste au-dessus du sol absolu est vide, et qu'il y a du vide plus haut
-            if (ctx.get(x, ctx.H - 2) === TILE.EMPTY) {
-                ctx.set(x, ctx.H - 2, TILE.DEATHZONE);
-            }
-        }
-    }
+ _placeDeathZones() {
+ // Placer une zone de mort au fond des précipices
+ // On cherche les colonnes où il y a du vide au dessus du bord inférieur
+ if (!this.ctx.grid) return;
+ for (let x = 1; x < this.ctx.W - 1; x++) {
+ // Si le sol juste au-dessus du sol absolu est vide, et qu'il y a du vide plus haut
+ if (this.ctx.get(x, this.ctx.H - 2) === TILE.EMPTY) {
+ this.ctx.set(x, this.ctx.H - 2, TILE.DEATHZONE);
+ }
+ }
+ }
 
     _placeItems() {
         const ctx = this.ctx;

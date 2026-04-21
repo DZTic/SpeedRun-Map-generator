@@ -107,10 +107,10 @@ class TrajectoryCalculator {
  
  // Vérifie si un walljump est possible
  canWallJump(wallHeight) {
- // Un walljump nécessite au moins 3 cases de hauteur
+ // Un walljump nécessite au moins 2 cases de hauteur (réduit depuis 3 car JUMP_MAX_HEIGHT=2)
  // et maximum JUMP_MAX_HEIGHT
- if (wallHeight < 3) {
- return { possible: false, reason: 'wall_too_short', min: 3 };
+ if (wallHeight < 2) {
+ return { possible: false, reason: 'wall_too_short', min: 2 };
  }
  if (wallHeight > PHYSICS.JUMP_MAX_HEIGHT + 2) {
  return { possible: false, reason: 'wall_too_high', max: PHYSICS.JUMP_MAX_HEIGHT + 2 };
@@ -427,17 +427,24 @@ class PlayabilityValidator {
  for (const seg of this.ctx.segments) {
  if (seg === segment) continue;
  
- // Vérifier si seg est adjacent à segment
- const dist = Math.sqrt(
- Math.pow(seg.x - segment.x, 2) + 
- Math.pow(seg.y - segment.y, 2)
- );
+ // Calculer le centre de chaque segment
+ const segCenterX = seg.x + Math.floor((seg.len || 2) / 2);
+ const segCenterY = seg.y;
+ const segmentCenterX = segment.x + Math.floor((segment.len || 2) / 2);
+ const segmentCenterY = segment.y;
  
- if (dist < 15) { // Distance arbitraire pour "adjacent"
+ // Vérifier si seg est adjacent à segment
+ const deltaX = Math.abs(segCenterX - segmentCenterX);
+ const deltaY = Math.abs(segCenterY - segmentCenterY);
+ const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+ 
+ // Distance max = saut horizontal max + marge
+ const maxDist = PHYSICS.JUMP_MAX_WIDTH + 2;
+ if (dist <= maxDist) {
  // Vérifier que le saut est physiquement possible
  const reach = this.physics.canJump(
- segment.x, segment.y,
- seg.x, seg.y
+ segmentCenterX, segmentCenterY,
+ segCenterX, segCenterY
  );
  if (reach.possible) {
  adjacent.push(seg);

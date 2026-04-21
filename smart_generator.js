@@ -43,8 +43,16 @@ class SmartGenerator {
  if (!validation.valid) {
  console.warn(`[SmartGenerator] Attempt ${attempts}: Validation failed`, validation.issues);
  
- // Si échec critique, on réessaie
- if (validation.issues.some(i => i.type === 'error')) {
+ // Vérifier si ce sont uniquement des warnings ou des erreurs critiques
+ const errors = validation.issues.filter(i => i.type === 'error');
+ const warnings = validation.issues.filter(i => i.type === 'warning');
+ 
+ // Si uniquement des warnings sans erreurs critiques, on accepte quand même
+ if (errors.length === 0 && warnings.length > 0) {
+ console.log(`[SmartGenerator] Attempt ${attempts}: Only warnings, proceeding`);
+ // Continue avec la génération malgré les warnings
+ } else if (errors.length > 0) {
+ // Si erreurs critiques, on réessaie
  this._clearStructure();
  continue;
  }
@@ -337,7 +345,7 @@ class SmartGenerator {
  }
  }
  
- // Map de fallback si tout échoue
+ // Map de fallback si tout échoue - GÉNÈRE UNE MAP SIMPLE MAIS COMPLÈTE
  _generateFallback() {
  console.log('[SmartGenerator] Using fallback generator');
  
@@ -351,13 +359,14 @@ class SmartGenerator {
  const startLen = D.pMax;
  path.push({ type: 'start', x: 2, y: H - 4, len: startLen });
  
- // Étapes simples
+ // Étapes simples - horizontal simple
  let cx = 2 + startLen;
  let cy = H - 4;
- const stepCount = Math.min(10, Math.floor((W - 10) / (D.pMax + 3)));
+ const stepCount = Math.min(10, Math.floor((W - 10) / (D.pMax + PHYSICS.JUMP_MAX_WIDTH)));
  
  for (let i = 0; i < stepCount; i++) {
- const gap = this.ctx.rng.int(2, PHYSICS.JUMP_MAX_WIDTH - 3);
+ // Gap garanti franchissable (max 3 car JUMP_MAX_WIDTH=5 et il faut marge)
+ const gap = this.ctx.rng.int(2, 3);
  const len = this.ctx.rng.int(D.pMin, D.pMax);
  
  path.push({
@@ -375,25 +384,64 @@ class SmartGenerator {
  // Fin
  path.push({ type: 'end', x: cx, y: cy, len: D.pMin + 1 });
  
- ctx.segments = path;
+ // Vide la structure avant de reconstruire
+ this._clearStructure();
+ 
+ // Construire le chemin
+ this.ctx.segments = path;
  this._buildStructure(path);
  this._placeStartEnd(path);
-
- // Définir stats même en fallback
- const dashCount = ctx.items.filter(i => i.type === TILE.DASH).length;
- const slideCount = ctx.items.filter(i => i.type === TILE.SLIDE).length;
- ctx.stats = {
- size: `${ctx.W} × ${ctx.H}`,
+ 
+ // Ajouter des items si dash/slide activés
+ if (this.ctx.cfg.dash && path.length > 3) {
+ const idx = this.ctx.rng.int(2, path.length - 2);
+ const seg = path[idx];
+ this.ctx.items.push({ type: TILE.DASH, x: seg.x + 1, y: seg.y - 1 });
+ this.ctx.set(seg.x + 1, seg.y - 1, TILE.DASH);
+ }
+ 
+ if (this.ctx.cfg.slide && path.length > 5) {
+ const idx = this.ctx.rng.int(2, path.length - 2);
+ const seg = path[idx];
+ this.ctx.items.push({ type: TILE.SLIDE, x: seg.x + 1, y: seg.y - 1 });
+ this.ctx.set(seg.x + 1, seg.y - 1, TILE.SLIDE);
+ }
+ 
+ // Ajouter quelques spikes si density > 0
+ const spikeCount = Math.floor(this.ctx.cfg.spikeDensity / 2);
+ for (let i = 0; i < spikeCount && i < path.length - 2; i++) {
+ const idx = this.ctx.rng.int(1, path.length - 2);
+ const seg = path[idx];
+ if (this.ctx.get(seg.x + 1, seg.y - 1) === TILE.EMPTY) {
+ this.ctx.set(seg.x + 1, seg.y - 1, TILE.SPIKE_UP);
+ }
+ }
+ 
+ // Définir stats
+ const dashCount = this.ctx.items.filter(i => i.type === TILE.DASH).length;
+ const slideCount = this.ctx.items.filter(i => i.type === TILE.SLIDE).length;
+ const spikeCountTotal = path.reduce((acc, seg) => {
+ for (let x = seg.x; x < seg.x + seg.len; x++) {
+ if (this.ctx.get(x, seg.y - 1) === TILE.SPIKE_UP) acc++;
+ }
+ return acc;
+ }, 0);
+ 
+ this.ctx.stats = {
+ size: `${this.ctx.W} × ${this.ctx.H}`,
  route: `${path.length} sections`,
  shortcuts: 0,
  dash: dashCount,
  slide: slideCount,
- spikes: 0,
- time: '30s',
+ trampoline: 0,
+ spikes: spikeCountTotal,
+ time: `${30 * path.length}s`,
  difficulty: 'fallback'
  };
-
- return ctx.grid;
+ 
+ console.log('[SmartGenerator] Fallback generated:', this.ctx.stats);
+ 
+ return this.ctx.grid;
  }
 }
 

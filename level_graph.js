@@ -141,8 +141,15 @@ class LevelGraph {
  x = Math.min(this.ctx.W - len - 2, prevNode.x + 10);
  y = prevNode.y;
  } else {
- x = Math.min(this.ctx.W - len - 2, prevNode.x + 5);
- y = 4;
+ // En vertical: s'assurer que l'arrivée est accessible depuis prevNode
+ // Max 2 cases de différence en hauteur
+ const maxStep = 2; // PHYSICS.JUMP_MAX_HEIGHT
+ if (prevNode.y > maxStep + 4) {
+ y = Math.max(4, prevNode.y - maxStep);
+ } else {
+ y = 4; // Haut minimum
+ }
+ x = Math.min(this.ctx.W - len - 2, prevNode.x + 3);
  }
  
  return {
@@ -162,7 +169,16 @@ class LevelGraph {
  let cy = current.y;
  
  // Machine à états pour les transitions
- const TRANSITIONS = {
+ // Réduire pour le mode vertical (vStep limité à 1-2 maintenant)
+ const TRANSITIONS_VERT = {
+ normal: ['normal', 'normal', 'normal', 'dash', 'slide'], // Plus de 'normal' pour être sûr
+ dash: ['normal', 'slide'],
+ slide: ['normal', 'dash'],
+ walljump: ['normal'],
+ trampoline: ['normal']
+ };
+ 
+ const TRANSITIONS = (this.ctx.cfg.style === 'vertical') ? TRANSITIONS_VERT : {
  normal: ['normal', 'dash', 'slide', 'walljump', 'trampoline'],
  dash: ['normal', 'slide', 'walljump', 'trampoline'],
  slide: ['normal', 'dash', 'walljump', 'trampoline'],
@@ -381,7 +397,11 @@ class LevelGraph {
  const wallThick = 2;
  const innerGap = 2;
  const exitLen = this.ctx.rng.int(D.pMin, D.pMax);
- const wallH = this.ctx.rng.int(...D.wH);
+ 
+ // Le wall jump doit respecter JUMP_MAX_HEIGHT (2 cases max de diff)
+ // Donc wallH doit être limité
+ const maxWallH = 4; // PHYSICS.JUMP_MAX_HEIGHT + 2 (marge)
+ const wallH = Math.min(maxWallH, this.ctx.rng.int(...D.wH));
  
  // Position du mur
  let wx = goRight 
