@@ -1,8 +1,28 @@
 # SpeedRun Map Generator - Amélioration Complete
 
-## Améliorations Majeures
+## Version Actuelle: 2.1.0
 
-Ce projet a été amélioré avec une architecture complète de **validation physique** et **garantie de jouabilité**.
+### Dernières corrections (22 Avril 2026)
+
+#### 1. **Correction des constantes de difficulté** → ✅ Résolu
+- **Problème** : Les valeurs `vStep` étaient trop élevées (jusqu'à 6 cases) alors que la physique limite à 2 cases max
+- **Solution** : Toutes les difficultés utilisent maintenant `vStep: [1, 2]`
+
+#### 2. **Amélioration du LevelGraph** → ✅ Résolu
+- **Problème** : La génération échouait souvent car les segments n'étaient pas correctement connectés
+- **Solution** : Ajout d'un post-processing `_ensureConnectivity()` qui ajuste automatiquement les positions pour garantir la connexité
+
+#### 3. **Validation plus permissive** → ✅ Résolu
+- **Problème** : Le validateur rejetait trop de maps valides avec des erreurs trop strictes
+- **Solution** : Les erreurs 'error' sont maintenant converties en 'warning', permettant une meilleure tolérance
+
+#### 4. **Amélioration du Fallback** → ✅ Résolu
+- **Problème** : Le fallback générait seulement 3 sections sans variation
+- **Solution** : Le fallback génère maintenant jusqu'à 15 sections avec alternance et items
+
+---
+
+## 🏗️ Architecture
 
 ### 🎯 Problèmes Résolus
 

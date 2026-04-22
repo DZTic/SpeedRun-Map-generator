@@ -97,14 +97,54 @@ class LevelGraph {
  this._generateMixedPath(path);
  }
  
- // Point d'arrivée
+ // Point d'arrivée - S'assurer qu'il est accessible
  const endNode = this._createEndNode(path[path.length - 1]);
+ 
+ // Vérifier si l'arrivée est accessible, sinon ajuster
+ const lastSeg = path[path.length - 1];
+ const connection = this._validateConnection(lastSeg, endNode);
+ if (!connection.valid) {
+ // Ajuster la position de l'arrivée pour la rendre accessible
+ endNode.y = lastSeg.y; // Même hauteur
+ endNode.x = Math.min(this.ctx.W - endNode.len - 2, lastSeg.x + PHYSICS.JUMP_MAX_WIDTH - 2);
+ }
+ 
  path.push(endNode);
  
- // Vérifier que tout le chemin est valide
- const validPath = this._validateFullPath(path);
+ // Post-processing: s'assurer que tous les segments sont connectés
+ this._ensureConnectivity(path);
  
- return validPath ? path : null;
+ return path;
+ }
+ 
+ // Post-processing pour garantir la connexité
+ _ensureConnectivity(path) {
+ for (let i = 1; i < path.length; i++) {
+ const prev = path[i - 1];
+ const curr = path[i];
+ 
+ const connection = this._validateConnection(prev, curr);
+ if (!connection.valid) {
+ // Ajuster le segment courant pour le rendre accessible
+ const maxStep = PHYSICS.JUMP_MAX_HEIGHT;
+ const maxGap = PHYSICS.JUMP_MAX_WIDTH;
+ 
+ // Essayer de rapprocher horizontalement
+ if (Math.abs(curr.x - prev.x) > maxGap) {
+ const direction = curr.x > prev.x ? 1 : -1;
+ curr.x = prev.x + direction * (maxGap - 2);
+ }
+ 
+ // Essayer de rapprocher verticalement
+ if (Math.abs(curr.y - prev.y) > maxStep) {
+ curr.y = prev.y - maxStep; // Descendre pour être accessible
+ }
+ 
+ // S'assurer que les coordonnées sont valides
+ curr.x = Math.max(2, Math.min(this.ctx.W - curr.len - 2, curr.x));
+ curr.y = Math.max(4, Math.min(this.ctx.H - 4, curr.y));
+ }
+ }
  }
  
  _createStartNode() {

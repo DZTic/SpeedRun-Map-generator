@@ -345,52 +345,100 @@ class SmartGenerator {
  }
  }
  
- // Map de fallback si tout échoue - GÉNÈRE UNE MAP SIMPLE MAIS COMPLÈTE
+// Map de fallback si tout échoue - GÉNÈRE UNE MAP SIMPLE MAIS COMPLÈTE
  _generateFallback() {
  console.log('[SmartGenerator] Using fallback generator');
  
- // Créer un chemin simple garanti
+ // Créer un chemin garanti avec plus de sections
  const path = [];
  const D = this.ctx.D;
  const W = this.ctx.W;
  const H = this.ctx.H;
+ const style = this.ctx.cfg.style;
  
- // Début
+ // Point de départ
  const startLen = D.pMax;
- path.push({ type: 'start', x: 2, y: H - 4, len: startLen });
+ let cx, cy;
  
- // Étapes simples - horizontal simple
- let cx = 2 + startLen;
- let cy = H - 4;
- const stepCount = Math.min(10, Math.floor((W - 10) / (D.pMax + PHYSICS.JUMP_MAX_WIDTH)));
+ if (style === 'horizontal') {
+ cx = 2;
+ cy = Math.floor(H * 0.42);
+ } else {
+ cx = 2;
+ cy = H - 4;
+ }
  
- for (let i = 0; i < stepCount; i++) {
- // Gap garanti franchissable (max 3 car JUMP_MAX_WIDTH=5 et il faut marge)
- const gap = this.ctx.rng.int(2, 3);
+ path.push({ type: 'start', x: cx, y: cy, len: startLen });
+ cx += startLen;
+ 
+ // Générer un chemin simple mais plus intéressant
+ if (style === 'vertical') {
+ // Chemin vertical avec petits sauts
+ const numSteps = Math.min(15, Math.floor((cy - 8) / 2));
+ for (let i = 0; i < numSteps && cy > 8; i++) {
  const len = this.ctx.rng.int(D.pMin, D.pMax);
+ const gap = this.ctx.rng.int(1, 2); // Petits gaps garantis franchissables
+ 
+ // Mouvement horizontal alterné
+ if (i % 2 === 0) {
+ cx = Math.min(W - len - 2, cx + gap);
+ } else {
+ cx = Math.max(2, cx - gap - len + 1);
+ }
+ 
+ cy -= 1; // Petit saut vertical (max 1 case)
  
  path.push({
  type: 'normal',
- x: cx + gap,
+ x: cx,
  y: cy,
  len: len,
  fromX: cx,
+ fromY: cy + 1
+ });
+ 
+ cx += len;
+ }
+ } else {
+ // Chemin horizontal simple
+ const numSteps = Math.min(12, Math.floor((W - 10) / (D.pMax + 2)));
+ 
+ for (let i = 0; i < numSteps && cx < W - 10; i++) {
+ const len = this.ctx.rng.int(D.pMin, D.pMax);
+ const gap = 2; // Gap garanti franchissable
+ 
+ // Souvent même niveau, parfois variation
+ const nextY = cy + (this.ctx.rng.bool(0.3) ? this.ctx.rng.int(-1, 1) : 0);
+ cy = Math.max(6, Math.min(H - 6, nextY));
+ 
+ cx += gap;
+ 
+ path.push({
+ type: 'normal',
+ x: cx,
+ y: cy,
+ len: len,
+ fromX: cx - gap,
  fromY: cy
  });
  
- cx += gap + len;
+ cx += len;
+ }
  }
  
- // Fin
- path.push({ type: 'end', x: cx, y: cy, len: D.pMin + 1 });
+// Point d'arrivée bien accessible
+ const endLen = D.pMin + 1;
+ const endX = Math.min(W - endLen - 2, cx);
+ path.push({ type: 'end', x: endX, y: cy, len: endLen });
  
- // Vide la structure avant de reconstruire
+ // Vide et reconstruit
  this._clearStructure();
- 
- // Construire le chemin
  this.ctx.segments = path;
  this._buildStructure(path);
  this._placeStartEnd(path);
+ 
+ // Ajouter quelques murs et obstacles de base pour l'esthétique
+ this._addBounds();
  
  // Ajouter des items si dash/slide activés
  if (this.ctx.cfg.dash && path.length > 3) {
